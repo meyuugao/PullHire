@@ -30,7 +30,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 ## Индекс слайсов
 
 ### Foundation
-- [ ] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
+- [~] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
 - [ ] S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
 - [ ] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
@@ -140,13 +140,13 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
 
-**Статус:** `[ ]` · **Фаза:** `foundation`
+**Статус:** `[~]` · **Фаза:** `foundation`
 
 - **id:** S0
 - **depends_on:** —
-- **goal:** Поднять скелет всего решения: пустые сервисы-заглушки всех 9 сервисов, инфраструктурный compose, конвенции и CI — чтобы каждый следующий слайс встраивался в работающий каркас.
+- **goal:** Поднять скелет всего решения: пустые сервисы-заглушки всех 8 сервисов, инфраструктурный compose, конвенции и CI — чтобы каждый следующий слайс встраивался в работающий каркас.
 - **inputs:** deployment.md (команды, порты, 12-factor), architecture.md §3.1 (состав сервисов, TOPOLOGY A), стек (Java 21 / Spring Boot 4.1.1 / Gradle 8.14 / Next.js 15).
-- **outputs:** репозиторий; Gradle multi-module (9 сервисов + gateway + frontend-заглушка); docker-compose (postgres:16-alpine, rabbitmq:3.13-management-alpine, nginx:1.27-alpine с self-signed TLS, axllent/mailpit, eclipse-temurin:21, node:22-alpine); заглушки с /healthz; .env.example закоммичен, .env в .gitignore; GitHub Actions: линтер → build+test, diff OpenAPI, совместимость JSON Schema событий, сборка Docker, smoke compose; базовые конвенции (problem+json, X-Api-Version: 1, springdoc OpenAPI как источник истины, /docs, JSON-логи).
+- **outputs:** репозиторий; Gradle multi-module (8 сервисов + gateway + frontend-заглушка); docker-compose (postgres:16-alpine, rabbitmq:3.13-management-alpine, nginx:1.27-alpine с self-signed TLS, axllent/mailpit, eclipse-temurin:21, node:22-alpine); заглушки с /healthz; .env.example закоммичен, .env в .gitignore; GitHub Actions: линтер → build+test, diff OpenAPI, совместимость JSON Schema событий, сборка Docker, smoke compose; базовые конвенции (problem+json, X-Api-Version: 1, springdoc OpenAPI как источник истины, /docs, JSON-логи).
 - **coverage:** deployment.md §CI/порты/12-factor; architecture.md §3.1 (каркас, TOPOLOGY A); api.md §соглашения (заготовки)
 
 **Exit criteria:**

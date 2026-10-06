@@ -57,3 +57,10 @@
 - ACL-рековери репозитория (UAC `takeown`/`icacls`) — разблокирована запись `.git/index`.
 - Верификация: `compose config` + `auth-service` `/healthz`=200 + postgres init (LF) — OK.
 - Осталось: полный `docker compose up` (gateway/TLS/`/docs`, все 8) — CI Stage 5.
+
+## 2026-10-06 — S0 full verification + status [~]
+
+- `docker compose up -d --build`: 13 контейнеров healthy, 0 рестартов.
+- Все 8 `/healthz` = 200 (8081–8088); `https://localhost` → 302 → `/docs/` = 200; `frontend` :3000 = 200.
+- S0 в трекере переведён `[ ]` → `[~]`; тело S0 реконсилировано «9 → 8 сервисов» (OQ-5).
+- Осталось: подтвердить зелёный CI на GitHub → затем `[x]`.
