@@ -1,0 +1,24 @@
+pluginManagement {
+    repositories {
+        // Maven Central first: the Spring Boot plugin marker is also published
+        // there (org.springframework.boot.gradle.plugin), so plugin resolution
+        // does not depend solely on the Gradle Plugin Portal.
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = "pullhire-backend"
+
+// Exactly the eight business services (docs/architecture.md §1.1).
+// NOT Gradle modules: api-gateway (nginx), frontend (Next.js), seed (owner S12).
+include(
+    "auth-service",
+    "candidate-service",
+    "fsp-service",
+    "assessment-service",
+    "selection-service",
+    "employer-service",
+    "outreach-service",
+    "notification-service",
+)

@@ -28,7 +28,7 @@
 |---|---|---|---|
 | Backend | Java (Temurin) | 21 (LTS) | GPLv2+CE |
 | Backend | Spring Boot | 4.1.1 | Apache-2.0 |
-| Backend | Gradle (wrapper) | 8.10 | Apache-2.0 |
+| Backend | Gradle (wrapper) | 8.14 | Apache-2.0 |
 | Backend | Spring AMQP / RabbitMQ client | из BOM Boot | Apache-2.0 |
 | Backend | Flyway | из BOM Boot | Apache-2.0 |
 | Backend | springdoc-openapi | 3.1.1 | Apache-2.0 |
@@ -62,7 +62,7 @@ Boot. `Spring Boot`, `Spring AMQP`, `Flyway`, `PostgreSQL JDBC` намеренн
 |---|---|---|
 | Spring Boot | 4.1.1 | Базовая платформа сервисов |
 | Java (Temurin JDK/JRE) | 21 | Язык и рантайм |
-| Gradle (wrapper) | 8.10 | Сборка, multi-project |
+| Gradle (wrapper) | 8.14 | Сборка, multi-project |
 | springdoc-openapi | 3.1.1 | Генерация OpenAPI/Swagger |
 | JJWT | 0.13.0 | JWT RS256, JWKS |
 | Spring Security Crypto | из BOM Boot | Argon2id / BCrypt |

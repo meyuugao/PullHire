@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PullHire — API документация</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; color: #1f2328; }
+    h1 { font-size: 1.5rem; }
+    ul { line-height: 1.9; }
+    code { background: #f3f4f6; padding: .1rem .3rem; border-radius: .25rem; }
+    .note { color: #57606a; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>PullHire — индекс API</h1>
+  <p class="note">OpenAPI каждого сервиса генерируется springdoc-openapi и служит источником истины
+    (<code>docs/api.md §1</code>, <code>docs/architecture.md §4.4</code>).</p>
+  <ul>
+    <li><a href="/openapi/auth">auth-service</a></li>
+    <li><a href="/openapi/candidate">candidate-service</a></li>
+    <li><a href="/openapi/fsp">fsp-service</a></li>
+    <li><a href="/openapi/assessment">assessment-service</a></li>
+    <li><a href="/openapi/selection">selection-service</a></li>
+    <li><a href="/openapi/employer">employer-service</a></li>
+    <li><a href="/openapi/outreach">outreach-service</a></li>
+    <li><a href="/openapi/notification">notification-service</a></li>
+  </ul>
+  <p class="note">Соглашения: <code>application/problem+json</code> (корневой ключ <code>error</code>),
+    заголовок <code>X-Api-Version: 1</code>, сквозной <code>X-Request-Id</code>.</p>
+</body>
+</html>

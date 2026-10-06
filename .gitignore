@@ -1,0 +1,27 @@
+# Environment (docs/deployment.md §4: .env.example committed, .env ignored)
+.env
+.env.local
+
+# Gradle / Java
+.gradle/
+backend/**/build/
+**/build/
+!**/src/**/build/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Gateway self-signed certs (generated at container start, docs/architecture.md §3.2)
+api-gateway/certs/
+
+# Logs
+*.log
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,36 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: candidate-service
+  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
+  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # placeholders sourced from .env (docs/deployment.md §4).
+  datasource:
+    url: ${CANDIDATE_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=candidate}
+    username: ${CANDIDATE_DB_ROLE:candidate_service}
+    password: ${CANDIDATE_DB_PASSWORD:change-me-candidate}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Structured JSON logs via Spring Boot built-in support (docs/architecture.md §7.1);
+# no extra logging dependency (docs/stack.md §2).
+logging:
+  structured:
+    format:
+      console: ecs

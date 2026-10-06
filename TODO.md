@@ -83,6 +83,16 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - Влияет на: S12, S13.
 - Решение: ручная сверка до входа в S12/S13. (дата: —)
 
+### OQ-5 — Module count (S0): «9 сервисов» vs 8 модулей
+- Вопрос: `TODO.md:139` называет «9 сервисов», тогда как `docs/architecture.md §1.1/§2/§3.1`, `docs/deployment.md §2`, `docs/mvp_scope.md §2.7` определяют 8 бизнес-сервисов + api-gateway (Nginx) + SPA.
+- Влияет на: S0.
+- Решение: 8 Gradle-модулей (auth/candidate/fsp/assessment/selection/employer/outreach/notification `-service`); gateway и frontend — не Gradle-модули. Приоритет за `docs/`. (дата: 2026-10-06)
+
+### OQ-6 — Gradle version (S0): docs 8.10 vs wrapper 8.14
+- Вопрос: `docs/` фиксировали Gradle 8.10, а wrapper использует Gradle 8.14.
+- Влияет на: S0.
+- Решение: сохранить 8.14 и обновить docs (решение пользователя). Обновлены ссылки на версию: `docs/stack.md §1` (сводная таблица) и §2, `TODO.md` S0 inputs, `docs/worklog.md` (S0 Phase 1), `docs/examples/package/PullHire-docs.md`/`.html`. (дата: 2026-10-06)
+
 ## Сводная таблица покрытия docs → слайс
 
 | Документ (docs/) | § | Покрывается слайсом(ами) |
@@ -135,7 +145,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - **id:** S0
 - **depends_on:** —
 - **goal:** Поднять скелет всего решения: пустые сервисы-заглушки всех 9 сервисов, инфраструктурный compose, конвенции и CI — чтобы каждый следующий слайс встраивался в работающий каркас.
-- **inputs:** deployment.md (команды, порты, 12-factor), architecture.md §3.1 (состав сервисов, TOPOLOGY A), стек (Java 21 / Spring Boot 4.1.1 / Gradle 8.10 / Next.js 15).
+- **inputs:** deployment.md (команды, порты, 12-factor), architecture.md §3.1 (состав сервисов, TOPOLOGY A), стек (Java 21 / Spring Boot 4.1.1 / Gradle 8.14 / Next.js 15).
 - **outputs:** репозиторий; Gradle multi-module (9 сервисов + gateway + frontend-заглушка); docker-compose (postgres:16-alpine, rabbitmq:3.13-management-alpine, nginx:1.27-alpine с self-signed TLS, axllent/mailpit, eclipse-temurin:21, node:22-alpine); заглушки с /healthz; .env.example закоммичен, .env в .gitignore; GitHub Actions: линтер → build+test, diff OpenAPI, совместимость JSON Schema событий, сборка Docker, smoke compose; базовые конвенции (problem+json, X-Api-Version: 1, springdoc OpenAPI как источник истины, /docs, JSON-логи).
 - **coverage:** deployment.md §CI/порты/12-factor; architecture.md §3.1 (каркас, TOPOLOGY A); api.md §соглашения (заготовки)
 

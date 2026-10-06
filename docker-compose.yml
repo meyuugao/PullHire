@@ -1,0 +1,327 @@
+# PullHire — TOPOLOGY A local stack (docs/architecture.md §5.1, docs/deployment.md §3).
+# Single command: docker compose up. Seed and e2e arrive in S12; no prometheus/grafana here.
+
+name: pullhire
+
+networks:
+  pullhire:
+    driver: bridge
+
+volumes:
+  pgdata:
+
+x-service-common: &service-common
+  restart: unless-stopped
+  networks:
+    - pullhire
+  depends_on:
+    postgres:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+
+x-service-healthcheck: &service-healthcheck
+  test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+  interval: 10s
+  timeout: 5s
+  retries: 30
+  start_period: 40s
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pullhire-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-pullhire_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERPASSWORD:-change-me-superuser}
+      AUTH_DB_ROLE: ${AUTH_DB_ROLE:-auth_service}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-change-me-auth}
+      CANDIDATE_DB_ROLE: ${CANDIDATE_DB_ROLE:-candidate_service}
+      CANDIDATE_DB_PASSWORD: ${CANDIDATE_DB_PASSWORD:-change-me-candidate}
+      FSP_DB_ROLE: ${FSP_DB_ROLE:-fsp_service}
+      FSP_DB_PASSWORD: ${FSP_DB_PASSWORD:-change-me-fsp}
+      ASSESSMENT_DB_ROLE: ${ASSESSMENT_DB_ROLE:-assessment_service}
+      ASSESSMENT_DB_PASSWORD: ${ASSESSMENT_DB_PASSWORD:-change-me-assessment}
+      SELECTION_DB_ROLE: ${SELECTION_DB_ROLE:-selection_service}
+      SELECTION_DB_PASSWORD: ${SELECTION_DB_PASSWORD:-change-me-selection}
+      EMPLOYER_DB_ROLE: ${EMPLOYER_DB_ROLE:-employer_service}
+      EMPLOYER_DB_PASSWORD: ${EMPLOYER_DB_PASSWORD:-change-me-employer}
+      OUTREACH_DB_ROLE: ${OUTREACH_DB_ROLE:-outreach_service}
+      OUTREACH_DB_PASSWORD: ${OUTREACH_DB_PASSWORD:-change-me-outreach}
+      NOTIFICATION_DB_ROLE: ${NOTIFICATION_DB_ROLE:-notification_service}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-change-me-notification}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-pullhire_admin} -d ${POSTGRES_DB:-pullhire}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 512m
+    networks:
+      - pullhire
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: pullhire-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    mem_limit: 320m
+    networks:
+      - pullhire
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    container_name: pullhire-mailpit
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_HTTP_PORT:-8025}:8025"
+    mem_limit: 64m
+    networks:
+      - pullhire
+
+  auth-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: auth-service/Dockerfile
+    image: pullhire/auth-service:0.1.0
+    container_name: pullhire-auth
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      AUTH_DB_ROLE: ${AUTH_DB_ROLE:-auth_service}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-change-me-auth}
+      AUTH_DB_URL: ${AUTH_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=auth}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${AUTH_PORT:-8081}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  candidate-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: candidate-service/Dockerfile
+    image: pullhire/candidate-service:0.1.0
+    container_name: pullhire-candidate
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      CANDIDATE_DB_ROLE: ${CANDIDATE_DB_ROLE:-candidate_service}
+      CANDIDATE_DB_PASSWORD: ${CANDIDATE_DB_PASSWORD:-change-me-candidate}
+      CANDIDATE_DB_URL: ${CANDIDATE_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=candidate}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${CANDIDATE_PORT:-8082}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  fsp-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: fsp-service/Dockerfile
+    image: pullhire/fsp-service:0.1.0
+    container_name: pullhire-fsp
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      FSP_DB_ROLE: ${FSP_DB_ROLE:-fsp_service}
+      FSP_DB_PASSWORD: ${FSP_DB_PASSWORD:-change-me-fsp}
+      FSP_DB_URL: ${FSP_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=fsp}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${FSP_PORT:-8083}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  assessment-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: assessment-service/Dockerfile
+    image: pullhire/assessment-service:0.1.0
+    container_name: pullhire-assessment
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      ASSESSMENT_DB_ROLE: ${ASSESSMENT_DB_ROLE:-assessment_service}
+      ASSESSMENT_DB_PASSWORD: ${ASSESSMENT_DB_PASSWORD:-change-me-assessment}
+      ASSESSMENT_DB_URL: ${ASSESSMENT_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=assessment}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${ASSESSMENT_PORT:-8084}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 224m
+
+  selection-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: selection-service/Dockerfile
+    image: pullhire/selection-service:0.1.0
+    container_name: pullhire-selection
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      SELECTION_DB_ROLE: ${SELECTION_DB_ROLE:-selection_service}
+      SELECTION_DB_PASSWORD: ${SELECTION_DB_PASSWORD:-change-me-selection}
+      SELECTION_DB_URL: ${SELECTION_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=selection}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${SELECTION_PORT:-8085}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  employer-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: employer-service/Dockerfile
+    image: pullhire/employer-service:0.1.0
+    container_name: pullhire-employer
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      EMPLOYER_DB_ROLE: ${EMPLOYER_DB_ROLE:-employer_service}
+      EMPLOYER_DB_PASSWORD: ${EMPLOYER_DB_PASSWORD:-change-me-employer}
+      EMPLOYER_DB_URL: ${EMPLOYER_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=employer}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${EMPLOYER_PORT:-8086}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  outreach-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: outreach-service/Dockerfile
+    image: pullhire/outreach-service:0.1.0
+    container_name: pullhire-outreach
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      OUTREACH_DB_ROLE: ${OUTREACH_DB_ROLE:-outreach_service}
+      OUTREACH_DB_PASSWORD: ${OUTREACH_DB_PASSWORD:-change-me-outreach}
+      OUTREACH_DB_URL: ${OUTREACH_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=outreach}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${OUTREACH_PORT:-8087}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  notification-service:
+    <<: *service-common
+    build:
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
+    image: pullhire/notification-service:0.1.0
+    container_name: pullhire-notification
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-pullhire}
+      NOTIFICATION_DB_ROLE: ${NOTIFICATION_DB_ROLE:-notification_service}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-change-me-notification}
+      NOTIFICATION_DB_URL: ${NOTIFICATION_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=notification}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+    ports:
+      - "${NOTIFICATION_PORT:-8088}:8080"
+    healthcheck: *service-healthcheck
+    mem_limit: 192m
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: pullhire/api-gateway:0.1.0
+    container_name: pullhire-gateway
+    environment:
+      GATEWAY_TLS_CERT: ${GATEWAY_TLS_CERT:-/etc/nginx/certs/server.crt}
+      GATEWAY_TLS_KEY: ${GATEWAY_TLS_KEY:-/etc/nginx/certs/server.key}
+    ports:
+      - "${GATEWAY_HTTP_PORT:-80}:80"
+      - "${GATEWAY_HTTPS_PORT:-443}:443"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      candidate-service:
+        condition: service_healthy
+      fsp-service:
+        condition: service_healthy
+      assessment-service:
+        condition: service_healthy
+      selection-service:
+        condition: service_healthy
+      employer-service:
+        condition: service_healthy
+      outreach-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 64m
+    networks:
+      - pullhire
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: pullhire/frontend:0.1.0
+    container_name: pullhire-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+    mem_limit: 64m
+    networks:
+      - pullhire
