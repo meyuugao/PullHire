@@ -47,3 +47,13 @@
 - F2: в `api-gateway/conf.d/default.conf` (HTTPS server) добавлен `location = /docs { return 301 /docs/; }` — `https://localhost/docs` редиректит на `/docs/`.
 - Ре-верификация (LIGHT): `docker compose config --quiet` → 0; `docker compose up -d --build postgres rabbitmq mailpit auth-service` → `BUILD SUCCESSFUL in 1m 13s`; `pullhire-auth` healthy, restarts=0; `GET http://localhost:8081/healthz` → 200; `X-Api-Version: 2` → 400 `application/problem+json`; лог «Started AuthServiceApplication»; стек погашен `docker compose down`.
 - Остаётся: Phase 3 — oracle-review каркаса; полная проверка `docker compose up` (gateway/frontend/8 сервисов, `/healthz` ×8, `https://localhost/docs`) отложена в CI.
+
+## 2026-10-06 — S0 Phase 3 fix: exec-bit + LF + /invitations
+
+- Oracle final review S0: 2 blocker + 1 high.
+- F1: `backend/gradlew` index mode `100644` → `100755`.
+- F2: `.gitattributes` — `*.sh text eol=lf`, `backend/gradlew text eol=lf`, `*.bat text eol=crlf`; рабочий tree приведён к LF (CR=0).
+- F3: gateway `location /invitations` (bare path по `docs/api.md`).
+- ACL-рековери репозитория (UAC `takeown`/`icacls`) — разблокирована запись `.git/index`.
+- Верификация: `compose config` + `auth-service` `/healthz`=200 + postgres init (LF) — OK.
+- Осталось: полный `docker compose up` (gateway/TLS/`/docs`, все 8) — CI Stage 5.
