@@ -193,6 +193,10 @@ UI-конвенции наследуются от RoboMatch (внешний ви
   счёт read-моделей-проекций. Единственная цепочка «по требованию»:
   потребность работодателя → `POST /selections` (сервис читает
   собственные проекции).
+- Оговорка: «единственная цепочка по требованию» действует для ядрового
+  контура. Опциональная механика регулярных заданий `[opt]` добавляет
+  внутренний sync-GET `employer → assessment` для сигнала свежести
+  (`docs/periodic_tasks.md §6.4`).
 - Обнаружение сервисов не вводится: DNS Docker Compose и статические
   маршруты Nginx; K8s/Consul отклонены для MVP.
 
@@ -398,7 +402,7 @@ e2e детализирован в `docs/deployment.md`; e2e-сценарий п�
 | `api-gateway` | nonfunctional (Архитектура, Документирование API) |
 | `frontend` (SPA) | nonfunctional; evaluation #3 |
 | compose / CI | nonfunctional (Контейнеризация, Качество кода, Открытый исходный код); acceptance |
-| post-MVP концепция | overview/acceptance (фейк-вакансии, ATS) - только документ, без кода |
+| post-MVP концепция | overview/acceptance (фейк-вакансии, ATS) - концепция в `docs/mvp_scope.md §4`; только документ, без кода |
 
 Полное сопоставление требований и статусов реализации - в
 `docs/final_summary.md` и `docs/mvp_scope.md`.

@@ -35,11 +35,11 @@
 | Backend | JJWT | 0.13.0 | Apache-2.0 |
 | Backend | Argon2 / BCrypt (Spring Security Crypto) | из BOM Boot | Apache-2.0 |
 | Backend | PostgreSQL JDBC | из BOM Boot | BSD-2-Clause |
-| Frontend | Next.js | 14.2.x | MIT |
-| Frontend | React | 18.3.x | MIT |
+| Frontend | Next.js | 15.x | MIT |
+| Frontend | React | 19.x | MIT |
 | Frontend | TypeScript | 5.5.x | Apache-2.0 |
 | Frontend | Tailwind CSS | 3.4.x | MIT |
-| Frontend | Node.js | 20 (LTS) | MIT |
+| Frontend | Node.js | 22 (LTS) | MIT |
 | Инфра | PostgreSQL | 16 | PostgreSQL License |
 | Инфра | RabbitMQ | 3.13 | MPL-2.0 |
 | Инфра | Nginx | 1.27 | BSD-2-Clause |
@@ -88,16 +88,21 @@ Frontend - SPA на React/Next.js для обеих ролей, со стиля�
 
 | Библиотека | Версия | Назначение |
 |---|---|---|
-| Next.js | 14.2.x | SPA-фреймворк, маршрутизация |
-| React | 18.3.x | UI-библиотека |
+| Next.js | 15.x | SPA-фреймворк, маршрутизация |
+| React | 19.x | UI-библиотека |
 | TypeScript | 5.5.x | Типизация |
 | Tailwind CSS | 3.4.x | Стили |
-| Node.js | 20 (LTS) | Сборка и рантайм |
+| Node.js | 22 (LTS) | Сборка и рантайм |
 | OpenAPI-клиент | генерируется | Типы клиентов к API |
 
 Клиенты к API строятся из сгенерированных OpenAPI-спецификаций
 (`docs/architecture.md §4.4`). Прямых обращений к сервисам минуя
 `api-gateway` нет. Сценарии ролей - в `docs/user_flow.md`.
+
+Версии frontend зафиксированы по действующим LTS/стабильным линиям:
+Node.js 22 (LTS) вместо выбывшего Node.js 20 (EOL с апреля 2026);
+Next.js 15.x и React 19.x выбраны согласованной парой, совместимой с
+Node.js 22.
 
 ## 4. Инфраструктура: образы и версии
 
@@ -109,7 +114,7 @@ Frontend - SPA на React/Next.js для обеих ролей, со стиля�
 | Mailpit (dev) | `axllent/mailpit:v1.20` | 1.20 | Перехват писем в разработке |
 | Runtime JRE | `eclipse-temurin:21-jre` | 21 | Runtime Spring Boot JAR |
 | Build JDK | `eclipse-temurin:21-jdk` | 21 | Сборка backend |
-| Build Node | `node:20-alpine` | 20 | Сборка frontend |
+| Build Node | `node:22-alpine` | 22 | Сборка frontend |
 
 Состав контейнеров, healthcheck и лимиты памяти - в
 `docs/architecture.md §5`. Команды сборки и запуска, URL и порты - в

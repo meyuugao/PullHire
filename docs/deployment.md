@@ -50,12 +50,12 @@
 | Docker Engine | 24+ | Контейнеры |
 | Docker Compose | v2 | Оркестрация локального запуска |
 | JDK (Temurin) | 21 | Локальная сборка backend |
-| Node.js / npm | 20 (LTS) | Локальная сборка frontend |
+| Node.js / npm | 22 (LTS) | Локальная сборка frontend |
 | Git | любая актуальная | Клонирование |
 
 ОС значения не имеет: сборка и запуск воспроизводимы на Windows, macOS и
 Linux (кросс-платформенность через Docker). Для сборки backend требуется
-JDK 21, для frontend - Node.js 20; для запуска только Docker достаточно.
+JDK 21, для frontend - Node.js 22; для запуска только Docker достаточно.
 
 ## 2. Сборка
 
@@ -88,7 +88,7 @@ npm ci
 npm run build
 ```
 
-Образ SPA - multi-stage (`node:20-alpine` → `nginx:1.27-alpine`).
+Образ SPA - multi-stage (`node:22-alpine` → `nginx:1.27-alpine`).
 Инфраструктурные образы (`postgres:16`, `rabbitmq:3.13`,
 `nginx:1.27`, `mailpit`) скачиваются из реестра; версии зафиксированы в
 `docs/stack.md §4`.

@@ -68,8 +68,8 @@
 - Ответы опроса — вход для подбора пула семейств шаблонов (§3.4) и границ
   категорий (§6.2).
 - Хранение опроса: `test_sessions.survey_answers` и
-  `test_sessions.declared_dimensions`; отрасль кандидата —
-  `candidate.profiles.industry_code` (`docs/data_model.md` §6.1).
+  `test_sessions.declared_dimensions` (`docs/data_model.md` §6.1); отрасль
+  кандидата — `candidate.profiles.industry_code` (`docs/data_model.md` §4.1).
 
 ### 2.2. Самообъявленный грейд
 
@@ -141,9 +141,11 @@
   определяются per-item seed.
 - Различаются два уровня seed: **seed формы** `test_sessions.form_seed`
   (form-level, воспроизводимость сборки формы) и **seed варианта**
-  `attempts.variant_seed` (per item, параметры конкретного задания);
-  повторная выдача того же параметрического варианта одному кандидату не
-  допускается (`docs/data_model.md` §6.1).
+  `attempts.variant_seed` (per item, параметры конкретного задания).
+  Повторная выдача того же параметрического варианта одному кандидату не
+  допускается: `assessment-service` ведёт журнал выдач в разрезе
+  «кандидат × семейство шаблонов/seed» и не переиздаёт уже выданный вариант
+  (`docs/data_model.md` §6.1).
 - Число доступных вариантов на семейство шаблонов и лимиты выдачи регулируются
   **exposure caps** на уровне семейства/задания (`item_bank.exposure_limit` /
   `item_bank.exposure_count`), а не отдельного несуществующего варианта (§9.1).
@@ -269,8 +271,9 @@
 - Категория (= специализация × грейд) пересчитывается по результату **любой**
   завершённой попытки, включая up/down и повторные попытки.
 - Контракт событий: **любая завершённая попытка перепубликует
-  `assessment.category_assigned`** с актуальной категорией; `selection`
-  потребляет только это событие. `assessment.grade_changed` — **audit/notification
+  `assessment.category_assigned`** с актуальной категорией; для проекции
+  **категории** `selection` потребляет это событие (полный список консьюмеров —
+  `docs/architecture.md §3.1`). `assessment.grade_changed` — **audit/notification
   only** и на обновление категории не влияет.
 - Изменения грейда фиксируются в истории (`docs/data_model.md` §6.1),
   публикуется событие `assessment.grade_changed` (аудит/уведомление).
@@ -310,7 +313,8 @@
 - Завершением конвейера считается публикация события
   **`assessment.category_assigned`** (transactional outbox;
   `docs/architecture.md` §4.3); каждая завершённая попытка перепубликует это
-  событие с актуальной категорией, а `selection` потребляет только его.
+  событие с актуальной категорией; для проекции **категории** `selection`
+  потребляет его (полный список консьюмеров — `docs/architecture.md §3.1`).
 - `assessment.grade_changed` — **audit/notification only**: на проекцию
   категории в `selection` не влияет (§7.1).
 - Событие транслируется в `selection-service` как проекция категории; до его

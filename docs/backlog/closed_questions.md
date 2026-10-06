@@ -80,7 +80,7 @@
 - Откуда: `../testing_model.md §2.1`; `../data_model.md §6.1`.
 - Действие: зафиксировать поля хранения.
 - Статус: решён командой.
-- Резолюция: `assessment.test_sessions.survey_answers` + `declared_dimensions`; отрасль — `candidate.profiles.industry_code`; публичная карточка отдаёт industry/специализацию/грейд. Form-level `test_sessions.form_seed`, per-item `attempts.variant_seed`. См. `../data_model.md §6.1`.
+- Резолюция: `assessment.test_sessions.survey_answers` + `declared_dimensions`; отрасль — `candidate.profiles.industry_code` (`../data_model.md §4.1`); публичная карточка отдаёт industry/специализацию/грейд. Form-level `test_sessions.form_seed`, per-item `attempts.variant_seed`. См. `../data_model.md §4.1` (`industry_code`), `§6.1`.
 
 ### TD-4. Snapshot `employer_contact`
 
@@ -106,6 +106,22 @@
 - Статус: осознанная граница (sanctioned).
 - Резолюция: отклонение **санкционировано** и зафиксировано в `../worklog.md` (Phase 5); раздел оставлен как содержательный перечень антипаттернов.
 
+### TD-7. Пакет правок финального ревью
+
+- Что: результаты финального сквозного ревью пакета документации — набор точечных правок, выявленных проверкой согласованности.
+- Откуда: `../worklog.md` (финальное ревью).
+- Действие: внести правки в затронутые документы, не меняя структуру и границы MVP.
+- Статус: решён командой.
+- Резолюция: (1) в `../mvp_scope.md §4` зафиксирован **blocker** — концепт «фиктивная вакансия/ATS»; (2) переформулирован event-contract (`../architecture.md §4.2`); (3) исправлена ссылка на deployment-документ; (4) свежесть профиля добавлена в карточку; (5) закреплено fallback-якорение заданий (`../assumptions.md §11`; `../data_model.md §6.2`); (6) soft-delete аккаунта отражён в схеме через `auth.users.deleted_at` (`../data_model.md §3.1`; `../assumptions.md §10`).
+
+### TD-8. Артефакт экспорта doc/pdf
+
+- Что: в пакете отсутствует артефакт экспорта документации в формате doc/pdf.
+- Откуда: `../worklog.md` (финальное ревью).
+- Действие: определить источник и способ генерации экспорта.
+- Статус: осознанная граница.
+- Резолюция: экспорт `doc/pdf` — артефакт сборки, не authored-документ; зафиксирован как техдолг и не блокирует MVP.
+
 ## 4. Хронология закрытия
 
 | Дата | Этап | Закрыто |
@@ -113,3 +129,4 @@
 | 2026-10-05 | docs/requirements | Baseline источников (verbatim-цитаты ТЗ) |
 | 2026-10-06 | Phase 5: core docs | Q-3 (cooldown = 1 месяц); TD-1 (event-contract), TD-3 (хранение опроса), TD-5 (exposure caps); TD-6 (санкционированное отклонение `testing_model §9.5`) |
 | 2026-10-06 | Phase 6: structural docs + examples/ | Q-1 (Keycloak), Q-2 (форматы заданий), Q-4 (API/структура ФСП); TD-2 (scope по специализации), TD-4 (snapshot `employer_contact`) |
+| 2026-10-06 | Финальное ревью | TD-3 (ссылка `data_model §4.1`); TD-7 (пакет правок финального ревью), TD-8 (артефакт экспорта doc/pdf) |

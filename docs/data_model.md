@@ -85,7 +85,8 @@ notification.notification_log
 auth.users ── candidate.profiles ── fsp.fsp_links
 assessment.candidate_id ── selection.candidate_categories ── outreach.invitations
 employer.companies ── employer.needs
-outreach.vacancies (vacancy_id) ── assessment.Task   [ext]   (напрямую needs ↔ Task не связаны)
+outreach.vacancies (vacancy_id) ── assessment.Task   [ext]
+employer.needs (need_id) ── assessment.Task   (fallback, когда вакансия [ext] не построена)
 ```
 
 ## 3. Схема auth
@@ -105,10 +106,11 @@ outreach.vacancies (vacancy_id) ── assessment.Task   [ext]   (напряму
 | role | text | NOT NULL, CHECK ∈ (candidate, employer) |
 | status | text | NOT NULL DEFAULT 'pending', CHECK ∈ (pending, active, blocked) |
 | email_verified_at | timestamptz | NULL |
+| deleted_at | timestamptz | NULL — soft-delete аккаунта (`docs/assumptions.md §10`) |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 | updated_at | timestamptz | NOT NULL DEFAULT now() |
 
-Индексы: UNIQUE email; btree role; btree status.
+Индексы: UNIQUE email; btree role; btree status; btree deleted_at.
 UNIQUE: `email`.
 
 ### 3.2. email_tokens
@@ -147,7 +149,7 @@ UNIQUE: `token_hash`.
 ### 3.4. consents
 
 Назначение: append-only журнал согласий 152-ФЗ (обработка, публикация профиля, связь с ФСП,
-участие в регулярных заданиях и показ результата — `task_participation`, `docs/periodic_tasks.md §6.1` C1);
+участие в регулярных заданиях и показ результата — `task_participation`, `docs/periodic_tasks.md §4` C1);
 источник аудита §13.
 
 | Поле | Тип | Ограничения |
@@ -423,7 +425,7 @@ UNIQUE: PK `id` (единственная строка).
 | need_id | bigint | NULL — логическая ссылка на employer.needs.id; заполняется в fallback-режиме |
 | cycle_date | date | NOT NULL |
 | status | text | NOT NULL DEFAULT 'pending', CHECK ∈ (pending, resolved, expired) |
-| action | text | NULL, CHECK ∈ (add, update, keep) |
+| action | text | NULL, CHECK (action IN ('add','update','keep')) |
 | resolved_at | timestamptz | NULL |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 
@@ -437,6 +439,7 @@ UNIQUE: `(vacancy_id, cycle_date) WHERE vacancy_id IS NOT NULL`; `(need_id, cycl
 | id | bigserial | PK |
 | employer_id | bigint | NOT NULL — логическая ссылка на auth.users.id |
 | vacancy_id | bigint | NULL — логическая ссылка на outreach.vacancies.id |
+| need_id | bigint | NULL — логическая ссылка на employer.needs.id; заполняется в fallback-режиме (нет вакансии) |
 | status | text | NOT NULL DEFAULT 'draft', CHECK ∈ (draft, active, retired) |
 | current_version_id | bigint | NULL, FK → TaskVersion.id |
 | keep_count | integer | NOT NULL DEFAULT 0, CHECK >= 0 |
@@ -444,8 +447,10 @@ UNIQUE: `(vacancy_id, cycle_date) WHERE vacancy_id IS NOT NULL`; `(need_id, cycl
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 | retired_at | timestamptz | NULL |
 
-Индексы: btree (employer_id, status); btree vacancy_id.
+Индексы: btree (employer_id, status); btree vacancy_id; btree need_id.
 UNIQUE: нет. Адресная выдача конкретному кандидату запрещена (`docs/periodic_tasks.md §3.4`).
+Якорение задания: `vacancy_id` при наличии вакансии, иначе `need_id` — fallback «потребность/компания»
+(`docs/assumptions.md §11`); оба поля NULLable, пул выдачи поддерживает оба якоря.
 
 **TaskVersion** — неизменяемая версия задания (snapshot).
 
@@ -825,6 +830,7 @@ UNIQUE: `source_event_id`.
 | История грейдов | assessment.grade_history | смены грейда/категории, направление, сессию | §6.1 |
 | События приглашений | outreach.invitation_events | переходы статусов, актора, время | §9.2 |
 | Согласия | auth.consents | grant/revoke по типам согласий и версии политики | §3.4 |
+| Soft-delete аккаунтов | auth.users.deleted_at | пометка удаления аккаунта и отзыв доступа | §3.1 |
 | Уведомления | notification.notification_log | факт, статус и ошибки отправки email | §10.1 |
 
 Событийная идемпотентность обеспечивается полем `source_event_id` консьюмеров
