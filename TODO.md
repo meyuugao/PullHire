@@ -30,7 +30,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 ## Индекс слайсов
 
 ### Foundation
-- [~] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
+- [x] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
 - [ ] S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
 - [ ] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
@@ -140,7 +140,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
 
-**Статус:** `[~]` · **Фаза:** `foundation`
+**Статус:** `[x]` · **Фаза:** `foundation`
 
 - **id:** S0
 - **depends_on:** —
@@ -150,11 +150,11 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - **coverage:** deployment.md §CI/порты/12-factor; architecture.md §3.1 (каркас, TOPOLOGY A); api.md §соглашения (заготовки)
 
 **Exit criteria:**
-- [ ] `./gradlew build` успешен из чистого клона
-- [ ] `docker compose up -d` поднимает PG/RabbitMQ/gateway/Mailpit и все заглушки, /healthz каждой = 200
-- [ ] `https://localhost` отвечает (self-signed), /docs доступен
-- [ ] все 5 стадий CI зелёные на PR
-- [ ] старт только из env-переменных
+- [x] `./gradlew build` успешен из чистого клона
+- [x] `docker compose up -d` поднимает PG/RabbitMQ/gateway/Mailpit и все заглушки, /healthz каждой = 200
+- [x] `https://localhost` отвечает (self-signed), /docs доступен
+- [x] все 5 стадий CI зелёные на PR
+- [x] старт только из env-переменных
 
 **Примечания / решение OQ:** —
 
