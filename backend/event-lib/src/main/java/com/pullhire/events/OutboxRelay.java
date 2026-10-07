@@ -8,9 +8,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,8 +32,10 @@ public class OutboxRelay {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
 
-    private static final String SELECT_UNPUBLISHED = "SELECT id, event_id, event_type, "
-            + "payload::text AS payload, correlation_id FROM outbox_events "
+    private static final JsonMapper JSON = new JsonMapper();
+
+    private static final String SELECT_UNPUBLISHED = "SELECT id, event_id, event_type, version, "
+            + "occurred_at, producer, payload::text AS payload, correlation_id FROM outbox_events "
             + "WHERE published_at IS NULL ORDER BY id LIMIT ?";
 
     private static final String MARK_PUBLISHED =
@@ -66,6 +70,9 @@ public class OutboxRelay {
                         rs.getLong("id"),
                         rs.getString("event_id"),
                         rs.getString("event_type"),
+                        rs.getInt("version"),
+                        rs.getObject("occurred_at", java.time.OffsetDateTime.class),
+                        rs.getString("producer"),
                         rs.getString("payload"),
                         rs.getString("correlation_id")),
                 properties.getBatchSize());
@@ -73,7 +80,7 @@ public class OutboxRelay {
 
     private void publish(OutboxMessage message) throws Exception {
         CorrelationData correlation = new CorrelationData(message.eventId());
-        rabbitTemplate.convertAndSend(EventNames.EXCHANGE, message.eventType(), message.payload(),
+        rabbitTemplate.convertAndSend(EventNames.EXCHANGE, message.eventType(), envelopeJson(message),
                 amqpMessage -> {
                     MessageProperties props = amqpMessage.getMessageProperties();
                     props.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -95,8 +102,30 @@ public class OutboxRelay {
         jdbc.update(MARK_PUBLISHED, message.id());
     }
 
+    /**
+     * Rebuilds the full wire envelope from the persisted outbox row. The outbox
+     * {@code payload} column holds only the inner payload object; the AMQP body must
+     * be the complete {@link EventEnvelope} ({@code event_id}, {@code type},
+     * {@code version}, {@code occurred_at}, {@code producer}, {@code correlation_id},
+     * {@code payload}) so consumers can deserialize it and read {@code type}/{@code event_id}.
+     */
+    @SuppressWarnings("unchecked")
+    private String envelopeJson(OutboxMessage message) {
+        Map<String, Object> payload = JSON.readValue(message.payload(), Map.class);
+        EventEnvelope envelope = new EventEnvelope(
+                message.eventId(),
+                message.eventType(),
+                message.version(),
+                message.occurredAt().toInstant(),
+                message.producer(),
+                message.correlationId(),
+                payload);
+        return envelope.toJson();
+    }
+
     /** Flat row projection of an unpublished outbox entry. */
-    private record OutboxMessage(long id, String eventId, String eventType, String payload,
+    private record OutboxMessage(long id, String eventId, String eventType, int version,
+                                 java.time.OffsetDateTime occurredAt, String producer, String payload,
                                  String correlationId) {
     }
 }
