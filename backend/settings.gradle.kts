@@ -22,3 +22,8 @@ include(
     "outreach-service",
     "notification-service",
 )
+
+// Shared event contract/mechanics library (S2): envelope, outbox, consumer
+// retry/DLQ, correlation MDC. A plain library — NOT a business service, so it
+// is intentionally excluded from the eight-service list above.
+include("event-lib")

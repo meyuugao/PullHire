@@ -32,7 +32,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 ### Foundation
 - [x] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
 - [x] S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
-- [ ] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
+- [~] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
 ### Domain
 - [ ] S3 — candidate-service: профиль, резюме/PDF, приватность, карточка
@@ -220,7 +220,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
-**Статус:** `[ ]` · **Фаза:** `foundation`
+**Статус:** `[~]` · **Фаза:** `foundation`
 
 - **id:** S2
 - **depends_on:** S0
@@ -236,7 +236,13 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - [ ] несовместимое изменение JSON Schema ломает CI
 - [ ] correlation_id виден в логах цепочки из ≥2 сервисов
 
-**Примечания / решение OQ:** —
+**Примечания / решение OQ:**
+- D2. В S2 библиотеку `event-lib` подключают только `auth-service` (publisher/outbox) и `notification-service` (consumer/DLQ+retry); остальные 6 сервисов получают только actuator/micrometer (skeletons).
+- D3. Таблица `outbox_events` создаётся только в схеме сервиса-публикатора (`auth`); консьюмеры outbox не пишут (`pullhire.outbox.enabled=false`).
+- D5. `spring-boot-starter-actuator` и `micrometer-registry-prometheus` добавлены в стек (`docs/stack.md §1`/`§2`).
+- D6. `correlation_id` генерируется, если входящий `X-Request-Id` отсутствует.
+- D7. `auth.outbox_events` добавлена в модель в коде (`V5__create_outbox_events.sql`); `docs/data_model.md` обновляется позже.
+- D8. Политика версии конверта: `version=1`; несовместимое изменение JSON Schema ломает CI (`scripts/check-event-compat.py`).
 
 ---
 

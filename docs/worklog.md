@@ -99,3 +99,40 @@
 - Подтверждено: F1 (`DataIntegrityViolationException` → 409 `conflict`) и F2 (`OQ-13`) в коммите `4f25cd2` на `origin/main`.
 - `backend/gradle.properties`: `org.gradle.daemon=false` закоммичен в S1 (локальная настройка среды).
 - Примечание: репозиторий ожидает Gradle 8.14 (wrapper), полного 8.x локально нет — сборка проверена на 9.7.1.
+
+## 2026-10-07 — S2 foundation: event-lib + outbox + contracts + auth wiring
+
+- Создан Gradle-модуль `backend/event-lib` (plain library, `bootJar` off): `EventEnvelope` (JSON `{event_id,type,version=1,occurred_at,producer,correlation_id,payload}`, Jackson 3), `EventNames`, `OutboxWriter`/`OutboxEventPublisher` (единственный publish API, в ambient-транзакции), `OutboxRelay` (`@Scheduled`, publisher-confirm перед `published_at`), `EventIdDedup`, `ConsumerRetryConfig` (bounded retry + `pullhire.events.dlx`/`<queue>.dlq`, requeue off, RabbitTemplate mandatory), `CorrelationMdcFilter`, `CorrelatedListenerAdvice` + `@AutoConfiguration`/imports.
+- Контракты: `contracts/events/{envelope,user.registered}.schema.json` (2020-12) + реестр `README.md`; OQ-13 — payload несёт `verification_url`, не `verification_token`.
+- auth-service: зависимость `:event-lib`, actuator + micrometer-prometheus; `EventPublisher` переписан на outbox (без `convertAndSend`), `AuthService` рендерит ссылку из `app.base-url` в той же транзакции; Flyway `auth/V5__create_outbox_events.sql`; `publisher-confirm-type: correlated`; `/metrics` (base-path `/`, path-mapping), `/readyz` = DB `SELECT 1` + брокер (503), `/metrics` в public-prefixes.
+- Открыто: notification-service всё ещё ждёт `verification_token` — обновление консьюмера на `verification_url` вне границ foundation-задачи; статус S2 `[ ]` → `[~]`, exit criteria не отмечены.
+
+## 2026-10-07 — S2 notification lane: event-lib consumer + DLQ + readyz/metrics
+
+- notification-service: зависимость `:event-lib`; `AmqpConfig` оставляет только owned-топологию (`notification.user-registered` + `.dlq` + binding на `pullhire.events.dlx`), retry/DLQ/advice — из `ConsumerRetryConfig`.
+- Консьюмер: payload `verification_url` (OQ-13), провал SMTP — `markFailed` + rethrow в bounded retry/DLQ; `pullhire.outbox.enabled=false` (нет outbox-таблицы в схеме consumer).
+- Реальный `/readyz` (DB `SELECT 1` + брокер, 503) и `/metrics` (actuator prometheus) в public-prefixes; тесты notification обновлены под dedup/happy/failure-propagate и `verification_url`.
+
+## 2026-10-07 — S2 observability skeletons: actuator + Prometheus на 6 сервисах
+
+- candidate/fsp/assessment/selection/employer/outreach: `spring-boot-starter-actuator` + `micrometer-registry-prometheus`, `/metrics` (base-path `/`, path-mapping `prometheus: metrics`), `/metrics` в public-prefixes `JwtAuthFilter`.
+
+## 2026-10-07 — S2 CI/scripts: event-compat gate + extended smoke
+
+- `.github/workflows/ci.yml`: job `event-schemas` вызывает `scripts/check-event-compat.py` (`fetch-depth: 0`, `git show HEAD:<path>`), ломает CI на несовместимом изменении `contracts/events/*.schema.json`.
+- `scripts/smoke-compose.sh`: сквозной `user.registered` через шлюз, `/metrics`+`/readyz` ×8, `correlation_id` в логах двух сервисов, дубль доставки (идемпотентность), остановка брокера (нет потери outbox); скипы при недоступных psql/Mailpit/Rabbit-API.
+
+## 2026-10-07 — S2 fix: correlation_id в success-логах auth+notification
+
+- Успешные обработки auth-service и notification-service пишут строку лога с MDC `correlation_id` (exit criterion 5); в связке с `CorrelationMdcFilter`/`CorrelatedListenerAdvice` id прослеживается в ECS-логах цепочки auth→notification.
+
+## 2026-10-07 — S2 Phase 3 review + fixes
+
+- Phase 3 review done as a compromise: independent targeted review ran on a DeepSeek reviewer (explorer) instead of the GLM oracle, because oracle was unavailable (first attempt `Insufficient balance`, relaunch cancelled). Scope was the 4 residual risks + 5 exit criteria.
+- Fixed R1: `OutboxRelay` made opt-in (`pullhire.outbox.enabled` default false; `auth-service` sets it true).
+- Fixed R2 (blocker): status-aware consumer dedup — skip only on terminal `sent`; reuse `failed`/`queued` rows and re-send, so bounded retry actually retries and exhausted retries reach the DLQ (at-least-once restored).
+- Fixed R3: `OutboxRelay` uses non-deprecated `Confirm.ack()/reason()`.
+- Fixed R4/D6 edge: envelope `correlation_id` falls back to MDC value when `X-Request-Id` absent.
+- Fixed E1 (blocker): dependency-free schema-conformance tests validate a serialized `EventEnvelope` and the `user.registered` payload against `contracts/events/*.schema.json`.
+- Fixed E4 (blocker): `scripts/check-event-compat.py` now diffs against a configurable BASE ref (PR base sha / push `before` / `origin/main`) with a negative self-test `scripts/check-event-compat-test.py`; wired into the `event-schemas` CI job.
+- Residual (unverified without a running stack): exit criteria 3 (broker-outage outbox durability) and 5 (correlation_id in real ≥2-service logs) rely on `scripts/smoke-compose.sh` / CI; no `@SpringBootTest` asserts the relay bean is absent for consumer-only services.

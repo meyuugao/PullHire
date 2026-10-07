@@ -58,25 +58,47 @@ jobs:
           done
           echo "Baseline specs present and valid; regeneration diff lands with S1+."
 
-  # Stage 4 — event JSON-Schema compatibility
+  # Stage 4 — event JSON-Schema compatibility (S2)
   event-schemas:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 is required so the base ref (PR base sha / event.before /
+      # origin/main) is present for `git show <base>:contracts/events/...`.
       - uses: actions/checkout@v4
-      - name: Validate event schemas
+        with:
+          fetch-depth: 0
+      - name: Resolve event-contract base ref
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          schemas=(contracts/events/*.json)
-          if [ ${#schemas[@]} -eq 0 ]; then
-            echo "No event schemas yet (S0); compatibility check is a no-op until S2."
-            exit 0
-          fi
-          for f in "${schemas[@]}"; do
-            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
-          done
-          echo "Event schemas parsed; breaking-change diff lands with S2."
+          case "$EVENT_NAME" in
+            pull_request) base="$PR_BASE_SHA" ;;
+            push)         base="$PUSH_BEFORE_SHA" ;;
+            *)            base="" ;;
+          esac
+          # New branch / force-push pushes have an all-zero `before` sha.
+          case "$base" in
+            ""|"0000000000000000000000000000000000000000")
+              base="origin/main"
+              ;;
+          esac
+          echo "event=$EVENT_NAME base=$base"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+      - name: Event-contract compatibility gate
+        env:
+          EVENT_COMPAT_BASE: ${{ steps.base.outputs.base }}
+        run: |
+          set -euo pipefail
+          python3 scripts/check-event-compat.py --base "$EVENT_COMPAT_BASE"
+      - name: Event-contract gate negative self-test
+        run: |
+          set -euo pipefail
+          python3 scripts/check-event-compat-test.py
 
   # Stage 5 — Docker image build + compose smoke
   smoke:

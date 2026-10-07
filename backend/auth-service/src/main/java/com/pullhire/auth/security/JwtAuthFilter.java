@@ -42,6 +42,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/.well-known/",
             "/healthz",
             "/readyz",
+            "/metrics",
             "/v3/api-docs",
             "/swagger-ui",
             "/actuator",

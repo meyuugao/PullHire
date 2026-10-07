@@ -31,6 +31,8 @@
 | Backend | Gradle (wrapper) | 8.14 | Apache-2.0 |
 | Backend | Spring AMQP / RabbitMQ client | из BOM Boot | Apache-2.0 |
 | Backend | Flyway | из BOM Boot | Apache-2.0 |
+| Backend | Spring Boot Actuator | из BOM Boot | Apache-2.0 |
+| Backend | Micrometer (Prometheus registry) | из BOM Boot | Apache-2.0 |
 | Backend | springdoc-openapi | 3.1.1 | Apache-2.0 |
 | Backend | JJWT | 0.13.0 | Apache-2.0 |
 | Backend | Argon2 / BCrypt (Spring Security Crypto) | из BOM Boot | Apache-2.0 |
@@ -68,6 +70,8 @@ Boot. `Spring Boot`, `Spring AMQP`, `Flyway`, `PostgreSQL JDBC` намеренн
 | Spring Security Crypto | из BOM Boot | Argon2id / BCrypt |
 | Spring AMQP | из BOM Boot | RabbitMQ, события |
 | Flyway | из BOM Boot | Миграции в схеме сервиса |
+| Spring Boot Actuator | из BOM Boot | Health-пробы, наблюдаемость |
+| Micrometer (Prometheus registry) | из BOM Boot | Экспорт `/metrics` (Prometheus) |
 | PostgreSQL JDBC | из BOM Boot | Доступ к БД |
 | Jackson | из BOM Boot | JSON / конверт событий |
 

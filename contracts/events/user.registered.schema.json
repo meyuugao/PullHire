@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/user.registered.schema.json",
+  "title": "user.registered payload",
+  "description": "Payload of the user.registered event (auth-service, docs/architecture.md §3.1). OQ-13: auth-service renders the full verification link, so the raw one-time token MUST NOT travel in the event.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["user_id", "email", "role", "verification_url"],
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Identifier of the newly registered user (string-encoded)."
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Normalized account email."
+    },
+    "role": {
+      "type": "string",
+      "enum": ["candidate", "employer"],
+      "description": "Role fixed at registration."
+    },
+    "verification_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Ready-to-send email verification link; contains the opaque one-time token. Replaces the raw verification_token (OQ-13)."
+    }
+  }
+}

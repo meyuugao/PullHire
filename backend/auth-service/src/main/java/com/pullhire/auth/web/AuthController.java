@@ -12,8 +12,10 @@ import com.pullhire.auth.web.dto.RegisterRequest;
 import com.pullhire.auth.web.dto.RegisterResponse;
 import com.pullhire.auth.web.dto.TokenResponse;
 import com.pullhire.auth.web.dto.VerifyEmailRequest;
+import com.pullhire.events.CorrelationMdcFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -66,6 +68,14 @@ public class AuthController {
     }
 
     private static String requestId(HttpServletRequest request) {
-        return request.getHeader(ApiVersionFilter.REQUEST_ID_HEADER);
+        String header = request.getHeader(ApiVersionFilter.REQUEST_ID_HEADER);
+        if (header != null && !header.isBlank()) {
+            return header;
+        }
+        // D6: no inbound X-Request-Id → CorrelationMdcFilter generated one into MDC
+        // for the same request; carry that id on the envelope so the event still
+        // joins the trace chain (mirrors CorrelationMdcFilter.HEADER/MDC_KEY).
+        String mdc = MDC.get(CorrelationMdcFilter.MDC_KEY);
+        return (mdc == null || mdc.isBlank()) ? null : mdc;
     }
 }

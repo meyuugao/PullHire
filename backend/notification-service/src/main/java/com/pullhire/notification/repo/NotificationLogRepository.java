@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JdbcTemplate access to {@code notification.notification_log}
@@ -41,13 +42,21 @@ public class NotificationLogRepository {
         this.jdbc = jdbc;
     }
 
-    /** True when an event with this {@code event_id} was already handled (dedup guard). */
-    public boolean existsBySourceEventId(String sourceEventId) {
-        Boolean exists = jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM notification_log WHERE source_event_id = :sourceEventId)",
+    /**
+     * The log row for a source event, if any. Status-aware dedup: a {@code sent}
+     * row means the event is done, while a {@code failed}/{@code queued} row is a
+     * retryable prior attempt whose id must be reused. The UNIQUE
+     * {@code source_event_id} constraint guarantees at most one row.
+     */
+    public Optional<NotificationLog> findBySourceEventId(String sourceEventId) {
+        if (sourceEventId == null) {
+            return Optional.empty();
+        }
+        List<NotificationLog> rows = jdbc.query(
+                "SELECT " + COLUMNS + " FROM notification_log WHERE source_event_id = :sourceEventId",
                 new MapSqlParameterSource("sourceEventId", sourceEventId),
-                Boolean.class);
-        return Boolean.TRUE.equals(exists);
+                MAPPER);
+        return rows.stream().findFirst();
     }
 
     /** Inserts a {@code queued} row and returns the generated id. */

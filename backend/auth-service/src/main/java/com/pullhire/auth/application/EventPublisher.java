@@ -1,66 +1,44 @@
 package com.pullhire.auth.application;
 
-import com.pullhire.auth.config.AmqpConfig;
 import com.pullhire.auth.domain.Role;
-import org.springframework.amqp.core.MessagePostProcessor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.http.MediaType;
+import com.pullhire.events.EventEnvelope;
+import com.pullhire.events.EventNames;
+import com.pullhire.events.OutboxEventPublisher;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.json.JsonMapper;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /**
- * Publishes the {@code user.registered} event to {@code pullhire.events}
- * ({@code docs/architecture.md §4.2}). S1 keeps this a minimal, direct publish —
- * no outbox and no shared event library yet (that is S2).
+ * Publishes {@code user.registered} through the shared transactional outbox
+ * ({@code docs/architecture.md §4.2/§4.3}). There is deliberately no
+ * {@code RabbitTemplate} here: {@link OutboxEventPublisher} is the only publish
+ * path, so the event commits with the registration transaction and the relay
+ * delivers it afterwards.
  *
- * <pre>
- * {"event_id","type","version","occurred_at","producer","correlation_id","payload"}
- * </pre>
+ * <p>OQ-13: the payload carries the fully rendered {@code verification_url},
+ * never the raw {@code verification_token}.
  */
 @Component
 public class EventPublisher {
 
-    public static final String TYPE_USER_REGISTERED = "user.registered";
+    public static final String TYPE_USER_REGISTERED = EventNames.USER_REGISTERED;
     private static final String PRODUCER = "auth-service";
-    private static final int VERSION = 1;
 
-    private final RabbitTemplate rabbitTemplate;
-    private final JsonMapper jsonMapper;
+    private final OutboxEventPublisher outbox;
 
-    public EventPublisher(RabbitTemplate rabbitTemplate, JsonMapper jsonMapper) {
-        this.rabbitTemplate = rabbitTemplate;
-        this.jsonMapper = jsonMapper;
+    public EventPublisher(OutboxEventPublisher outbox) {
+        this.outbox = outbox;
     }
 
-    public void publishUserRegistered(long userId, String email, Role role, String verificationToken,
+    public void publishUserRegistered(long userId, String email, Role role, String verificationUrl,
                                       String correlationId) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("user_id", Long.toString(userId));
         payload.put("email", email);
         payload.put("role", role.wire());
-        payload.put("verification_token", verificationToken);
+        payload.put("verification_url", verificationUrl);
 
-        Map<String, Object> event = new LinkedHashMap<>();
-        event.put("event_id", UUID.randomUUID().toString());
-        event.put("type", TYPE_USER_REGISTERED);
-        event.put("version", VERSION);
-        event.put("occurred_at", Instant.now().toString());
-        event.put("producer", PRODUCER);
-        event.put("correlation_id", correlationId);
-        event.put("payload", payload);
-
-        String body = jsonMapper.writeValueAsString(event);
-        MessagePostProcessor postProcessor = message -> {
-            message.getMessageProperties().setContentType(MediaType.APPLICATION_JSON_VALUE);
-            message.getMessageProperties().setContentEncoding(StandardCharsets.UTF_8.name());
-            return message;
-        };
-        rabbitTemplate.convertAndSend(AmqpConfig.EVENTS_EXCHANGE, TYPE_USER_REGISTERED, body, postProcessor);
+        outbox.publish(EventEnvelope.of(TYPE_USER_REGISTERED, PRODUCER, correlationId, payload));
     }
 }

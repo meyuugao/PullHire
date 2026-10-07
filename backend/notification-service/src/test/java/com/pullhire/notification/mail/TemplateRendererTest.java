@@ -1,33 +1,30 @@
 package com.pullhire.notification.mail;
 
-import com.pullhire.notification.config.AppProperties;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Unit tests for the {@code verify_email} template link ({@code docs/api.md §1}). */
+/** Unit tests for the {@code verify_email} template ({@code docs/api.md §1}, OQ-13). */
 class TemplateRendererTest {
 
-    private TemplateRenderer renderer(String baseUrl) {
-        AppProperties properties = new AppProperties();
-        properties.setBaseUrl(baseUrl);
-        return new TemplateRenderer(properties);
-    }
+    private final TemplateRenderer renderer = new TemplateRenderer();
 
     @Test
-    void verifyEmailBodyEmbedsRawTokenInLink() {
+    void verifyEmailBodyEmbedsReadyVerificationUrlVerbatim() {
+        String url = "https://app.pullhire.local/verify-email?token=one-time-abc";
+
         TemplateRenderer.RenderedEmail rendered =
-                renderer("https://app.pullhire.local").render("verify_email", "user@example.com", "raw-token-abc");
+                renderer.render("verify_email", "user@example.com", url);
 
         assertThat(rendered.subject()).isNotBlank();
-        assertThat(rendered.body())
-                .contains("https://app.pullhire.local/verify-email?token=raw-token-abc");
+        assertThat(rendered.body()).contains(url);
     }
 
     @Test
     void unknownTemplateIsRejected() {
-        assertThatThrownBy(() -> renderer("http://localhost:3000").render("unknown", "user@example.com", "x"))
+        assertThatThrownBy(() -> renderer.render("unknown", "user@example.com",
+                "https://app.pullhire.local/verify-email?token=x"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

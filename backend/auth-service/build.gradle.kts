@@ -4,6 +4,10 @@
 description = "PullHire auth-service — identity, JWT, roles, 152-FZ consents"
 
 dependencies {
+    // Shared event mechanics (S2): transactional outbox, envelope, correlation,
+    // consumer retry/DLQ. Replaces the S1 direct RabbitTemplate publish.
+    implementation(project(":event-lib"))
+
     // Persistence: JdbcTemplate + Flyway (docs/data_model.md §1, per-schema migrations).
     // Boot 4 ships Flyway autoconfiguration in spring-boot-starter-flyway (not in flyway-core alone).
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -14,6 +18,10 @@ dependencies {
     // Events (docs/architecture.md §4.2): minimal publisher to pullhire.events, no consumers here.
     implementation("org.springframework.boot:spring-boot-starter-amqp")
 
+    // Observability (S2, docs/architecture.md §7.1): health probes + Prometheus /metrics.
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
     // Passwords: BCrypt only, without the servlet security filter chain (docs/stack.md §2).
     implementation("org.springframework.security:spring-security-crypto")
 
@@ -21,4 +29,12 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
+}
+
+tasks.withType<Test>().configureEach {
+    // E1: hand the committed contract schemas to the payload conformance test.
+    systemProperty(
+        "pullhire.contracts.dir",
+        rootProject.projectDir.parentFile.resolve("contracts/events").absolutePath,
+    )
 }

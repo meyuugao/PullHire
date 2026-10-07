@@ -56,6 +56,30 @@
 - Статус: закрыт ответом из требований.
 - Резолюция: API и структура данных **не предоставлены**; принята собственная модель и mock/синтетика; см. `../assumptions.md §5`, `§7`; `../fsp_integration.md §3–§4`.
 
+### OQ-7. Временный канал auth→notification (S1)
+
+- Что: канал `user.registered` (exchange/queue/routing-key) выбран локально в S1 при отсутствии outbox и общей библиотеки.
+- Откуда: `../worklog.md` (S1); `TODO.md` OQ-7.
+- Действие: заменить локальную публикацию/потребление общим publisher/consumer из `backend/event-lib` с transactional outbox.
+- Статус: решён командой.
+- Резолюция: S2 — auth публикует через `OutboxEventPublisher`/`OutboxRelay` в единственный exchange `pullhire.events`, notification потребляет через типизованный консьюмер `event-lib` с `EventIdDedup`. См. `../worklog.md` (S2 foundation, S2 notification lane).
+
+### OQ-8. Риск потери `user.registered` при недоступном брокере
+
+- Что: в S1 прямой publish без outbox/ретраев — при недоступном RabbitMQ событие терялось.
+- Откуда: `../worklog.md` (S1); `TODO.md` OQ-8.
+- Действие: гарантировать, что недоступность брокера не теряет событие.
+- Статус: решён командой.
+- Резолюция: transactional outbox (`auth.outbox_events` + `OutboxRelay` с publisher-confirm перед `published_at`) и bounded retry/DLQ у консьюмера; остановка брокера не теряет outbox-событие (`scripts/smoke-compose.sh`). См. `../worklog.md` (S2 foundation).
+
+### OQ-13. Сырой `verification_token` в payload `user.registered`
+
+- Что: одноразовый `verification_token` передавался через RabbitMQ, ссылку строил notification.
+- Откуда: `../worklog.md` (S1); `TODO.md` OQ-13.
+- Действие: убрать сырой токен из события.
+- Статус: решён командой.
+- Резолюция: auth рендерит `verification_url` в той же транзакции; payload несёт `verification_url`, поле `verification_token` удалено из `contracts/events/user.registered.schema.json`. См. `../worklog.md` (S2 foundation).
+
 ## 3. Группа TD. Технический долг (TD-N)
 
 ### TD-1. Event-contract: republish `category_assigned`
@@ -122,6 +146,22 @@
 - Статус: осознанная граница.
 - Резолюция: экспорт `doc/pdf` — артефакт сборки, не authored-документ; зафиксирован как техдолг и не блокирует MVP.
 
+### D1. Non-service Gradle-модуль `backend/event-lib`
+
+- Что: `../deployment.md §2` описывает backend как «один корневой `backend/build.gradle.kts` и модуль на сервис»; S2 добавляет модуль `backend/event-lib`, не являющийся сервисом.
+- Откуда: `../deployment.md §2`; `../worklog.md` (S2).
+- Действие: зафиксировать отклонение от буквальной формулировки.
+- Статус: осознанная граница (sanctioned).
+- Резолюция: добавление `backend/event-lib` санкционировано выходом `TODO.md` S2 «библиотека publisher/consumer для всех сервисов». См. `../worklog.md` (S2 foundation).
+
+### D4. Outbox для всех событий
+
+- Что: `../architecture.md §4.3` применяет transactional outbox только к критичным событиям (`assessment.category_assigned`, жизненный цикл приглашения).
+- Откуда: `../architecture.md §4.3`; `../worklog.md` (S2).
+- Действие: определить охват outbox.
+- Статус: решён командой.
+- Резолюция: outbox расширен на **все** события (утверждённое решение S2), а не только на критичные. См. `../worklog.md` (S2 foundation).
+
 ## 4. Хронология закрытия
 
 | Дата | Этап | Закрыто |
@@ -130,3 +170,4 @@
 | 2026-10-06 | Phase 5: core docs | Q-3 (cooldown = 1 месяц); TD-1 (event-contract), TD-3 (хранение опроса), TD-5 (exposure caps); TD-6 (санкционированное отклонение `testing_model §9.5`) |
 | 2026-10-06 | Phase 6: structural docs + examples/ | Q-1 (Keycloak), Q-2 (форматы заданий), Q-4 (API/структура ФСП); TD-2 (scope по специализации), TD-4 (snapshot `employer_contact`) |
 | 2026-10-06 | Финальное ревью | TD-3 (ссылка `data_model §4.1`); TD-7 (пакет правок финального ревью), TD-8 (артефакт экспорта doc/pdf) |
+| 2026-10-07 | S2: event-lib + outbox + наблюдаемость | OQ-7, OQ-8 (event-lib publisher/consumer + outbox), OQ-13 (`verification_url`); D1 (модуль `backend/event-lib`), D4 (outbox для всех событий) |

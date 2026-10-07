@@ -22,11 +22,12 @@ public record UserRegisteredEvent(
 
     public static final String TYPE = "user.registered";
 
-    /** Event payload: the raw one-time verification token travels here. */
+    /** Event payload ({@code contracts/events/user.registered.schema.json}). OQ-13: the
+     * producer renders the full {@code verification_url}; the raw token never travels. */
     public record Payload(
             @JsonProperty("user_id") String userId,
             @JsonProperty("email") String email,
             @JsonProperty("role") String role,
-            @JsonProperty("verification_token") String verificationToken) {
+            @JsonProperty("verification_url") String verificationUrl) {
     }
 }

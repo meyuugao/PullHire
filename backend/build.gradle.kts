@@ -37,3 +37,14 @@ subprojects {
         useJUnitPlatform()
     }
 }
+
+// event-lib is a plain shared library: keep the ordinary `jar`, no executable
+// Spring Boot fat jar. It still inherits the BOM + Java 21 toolchain above.
+project(":event-lib") {
+    tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+        enabled = false
+    }
+    tasks.named<Jar>("jar") {
+        enabled = true
+    }
+}

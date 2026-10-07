@@ -4,6 +4,10 @@
 description = "PullHire notification-service — outbound email"
 
 dependencies {
+    // Shared event mechanics (S2): envelope, consumer retry/DLQ defaults, correlation
+    // MDC, auto-configured. The consumer wiring lives in config/AmqpConfig + ingest/.
+    implementation(project(":event-lib"))
+
     // Persistence: JdbcTemplate + Flyway (docs/data_model.md §1, per-schema migrations).
     // Boot 4 ships Flyway autoconfiguration in spring-boot-starter-flyway (not in flyway-core alone).
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -13,6 +17,10 @@ dependencies {
 
     // Events (docs/architecture.md §4.2): consumer of pullhire.events.
     implementation("org.springframework.boot:spring-boot-starter-amqp")
+
+    // Observability (S2, docs/architecture.md §7.1): health probes + Prometheus /metrics.
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Outbound email via JavaMailSender (docs/stack.md §2); dev target = Mailpit.
     implementation("org.springframework.boot:spring-boot-starter-mail")

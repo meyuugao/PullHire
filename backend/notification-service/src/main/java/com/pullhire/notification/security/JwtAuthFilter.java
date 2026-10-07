@@ -42,6 +42,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final List<String> PUBLIC_PREFIXES = List.of(
             "/healthz",
             "/readyz",
+            "/metrics",
             "/v3/api-docs",
             "/swagger-ui",
             "/.well-known/");

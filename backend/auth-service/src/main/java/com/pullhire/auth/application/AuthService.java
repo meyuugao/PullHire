@@ -9,6 +9,9 @@ import com.pullhire.auth.domain.UserStatus;
 import com.pullhire.auth.error.ApiException;
 import com.pullhire.auth.repo.EmailTokenRepository;
 import com.pullhire.auth.repo.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,8 @@ import java.util.Locale;
 @Service
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
     /** Email verification link lifetime (§4 roles.md): 24 hours. */
     private static final Duration EMAIL_TOKEN_TTL = Duration.ofHours(24);
 
@@ -34,15 +39,18 @@ public class AuthService {
     private final TokenService tokens;
     private final EventPublisher events;
     private final PasswordEncoder passwordEncoder;
+    private final String appBaseUrl;
 
     public AuthService(UserRepository users, EmailTokenRepository emailTokens, ConsentService consentService,
-                       TokenService tokens, EventPublisher events, PasswordEncoder passwordEncoder) {
+                       TokenService tokens, EventPublisher events, PasswordEncoder passwordEncoder,
+                       @Value("${app.base-url}") String appBaseUrl) {
         this.users = users;
         this.emailTokens = emailTokens;
         this.consentService = consentService;
         this.tokens = tokens;
         this.events = events;
         this.passwordEncoder = passwordEncoder;
+        this.appBaseUrl = appBaseUrl;
     }
 
     /**
@@ -64,7 +72,13 @@ public class AuthService {
 
         String rawToken = TokenService.generateRawToken();
         emailTokens.insert(userId, TokenService.hashToken(rawToken), Instant.now().plus(EMAIL_TOKEN_TTL));
-        events.publishUserRegistered(userId, normalizedEmail, role, rawToken, requestId);
+        // OQ-13: render the full link here; the raw token never enters the event.
+        String verificationUrl = appBaseUrl + "/verify-email?token=" + rawToken;
+        events.publishUserRegistered(userId, normalizedEmail, role, verificationUrl, requestId);
+        // Success marker for the chain: MDC correlation_id comes from CorrelationMdcFilter.
+        // Never log the raw token or password; email is intentionally omitted (PII).
+        log.info("Регистрация принята, user.registered помещён в outbox: user_id={}, role={}",
+                userId, role.wire());
 
         return users.findById(userId).orElseThrow(() -> ApiException.notFound("Пользователь не найден"));
     }

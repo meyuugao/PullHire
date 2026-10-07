@@ -17,11 +17,14 @@ spring:
     default-schema: auth
     schemas: auth
   # Event broker (docs/architecture.md §4.2); publisher only, no listeners in auth.
+  # correlated publisher confirms let the outbox relay mark rows published only
+  # after the broker acks (docs/architecture.md §4.3).
   rabbitmq:
     host: ${RABBITMQ_HOST:rabbitmq}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_DEFAULT_USER:pullhire}
     password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+    publisher-confirm-type: correlated
 
 app:
   # Public SPA base URL, consumed by notification-service when building email links.
@@ -31,15 +34,24 @@ app:
     access-ttl: ${JWT_ACCESS_TTL:PT15M}
     refresh-ttl: ${JWT_REFRESH_TTL:P30D}
 
+# Event publisher reliability (S2): auth-service owns the outbox_events table
+# (V5 migration), so it explicitly opts in to the event-lib outbox relay and its
+# scheduler. The relay is OFF by default for every other (consumer-only) service.
+pullhire:
+  outbox:
+    enabled: true
+
 management:
+  # Observability (S2, docs/architecture.md §7.1): expose ONLY Prometheus
+  # metrics, at the literal path /metrics. Base-path `/` + path-mapping keeps
+  # the public contract literal; health is served by our /healthz + /readyz.
   endpoints:
     web:
+      base-path: /
+      path-mapping:
+        prometheus: metrics
       exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
+        include: prometheus
 
 springdoc:
   api-docs:

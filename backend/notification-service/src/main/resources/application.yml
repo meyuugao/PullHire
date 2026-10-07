@@ -36,15 +36,25 @@ app:
   # Public SPA base URL, used to build email links (verify-email).
   base-url: ${APP_BASE_URL:http://localhost:3000}
 
+# Event consumer reliability (S2): retry/DLQ + correlation MDC are provided by
+# event-lib's auto-configuration (ConsumerRetryConfig). This service does not
+# publish, so the outbox relay (and its scheduler) is disabled — no outbox_events
+# table exists in the notification schema.
+pullhire:
+  outbox:
+    enabled: false
+
 management:
   endpoints:
     web:
+      # Observability (S2, docs/architecture.md §7.1): expose ONLY Prometheus
+      # metrics at the literal path /metrics. Base-path `/` + path-mapping keeps
+      # the public contract literal; health is served by our /healthz + /readyz.
+      base-path: /
+      path-mapping:
+        prometheus: metrics
       exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
+        include: prometheus
 
 springdoc:
   api-docs:

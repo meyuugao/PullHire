@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/envelope.schema.json",
+  "title": "PullHire event envelope",
+  "description": "Common envelope for every event on the pullhire.events topic exchange (docs/architecture.md §4.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "type",
+    "version",
+    "occurred_at",
+    "producer",
+    "correlation_id",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event id; consumers dedup on this value."
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Event name / routing key, e.g. user.registered."
+    },
+    "version": {
+      "const": 1,
+      "description": "Envelope/payload version. Starts at 1; incremented only on an incompatible payload change."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant the event was produced (ISO-8601)."
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Originating service, e.g. auth-service."
+    },
+    "correlation_id": {
+      "type": ["string", "null"],
+      "description": "Chain id propagated from X-Request-Id for tracing."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific body; validated by the per-event schema."
+    }
+  }
+}

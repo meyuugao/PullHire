@@ -13,14 +13,16 @@ spring:
     password: ${FSP_DB_PASSWORD:change-me-fsp}
 
 management:
+  # Observability (docs/architecture.md §7.1): expose ONLY Prometheus
+  # metrics, at the literal path /metrics. Base-path `/` + path-mapping keeps
+  # the public contract literal; health is served by our /healthz + /readyz.
   endpoints:
     web:
+      base-path: /
+      path-mapping:
+        prometheus: metrics
       exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
+        include: prometheus
 
 springdoc:
   api-docs:
