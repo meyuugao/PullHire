@@ -93,6 +93,41 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - Влияет на: S0.
 - Решение: сохранить 8.14 и обновить docs (решение пользователя). Обновлены ссылки на версию: `docs/stack.md §1` (сводная таблица) и §2, `TODO.md` S0 inputs, `docs/worklog.md` (S0 Phase 1), `docs/examples/package/PullHire-docs.md`/`.html`. (дата: 2026-10-06)
 
+### OQ-7 — Временный канал auth→notification (S1)
+- Вопрос: exchange/queue/routing-key события `user.registered` выбраны локально в S1; outbox и общая библиотека отсутствуют.
+- Влияет на: S1, S2.
+- Решение: временный канал до S2 — topic `pullhire.events`, routing key `user.registered`, queue `notification.user-registered`, конверт `docs/architecture.md §4.2`; заменяется библиотекой S2. (дата: 2026-10-06)
+
+### OQ-8 — Риск потери `user.registered` при недоступном брокере
+- Вопрос: контракта повторной доставки/ретраев нет; при недоступном RabbitMQ событие теряется.
+- Влияет на: S1, S2.
+- Решение: принятое ограничение до S2 (outbox/идемпотентность); в `docs/api.md §3.1` ретраев нет. (дата: 2026-10-06)
+
+### OQ-9 — `docs/stack.md §2` не содержит `spring-boot-starter-mail` и `spring-boot-starter-flyway`
+- Вопрос: S1 использует эти зависимости, но в `docs/stack.md §2` они отсутствуют.
+- Влияет на: docs.
+- Решение: docs на ходу не правились (правило трекера); внести в `docs/stack.md §2` при следующем согласованном обновлении docs. (дата: 2026-10-06)
+
+### OQ-10 — `Idempotency-Key` на register отложен до S9
+- Вопрос: `docs/api.md §1` декларирует `Idempotency-Key` для небезопасных POST; в S1 не реализован.
+- Влияет на: S1, S9.
+- Решение: дубль защищён `UNIQUE(email)` → 409 `conflict`; полная идемпотентность — зона S9. (дата: 2026-10-06)
+
+### OQ-11 — TTL токенов не нормированы доками
+- Вопрос: `docs/` не задают значения TTL; выбраны access PT15M / refresh P30D / email-токен 24h.
+- Влияет на: S1.
+- Решение: значения вынесены в env (`JWT_ACCESS_TTL` / `JWT_REFRESH_TTL`), email-токен 24h; уточнить в docs при следующем апдейте. (дата: 2026-10-06)
+
+### OQ-12 — Выбор BCrypt внутри пары `architecture §6.1`
+- Вопрос: `docs/architecture.md §6.1` / `docs/stack.md §2` допускают Argon2id или BCrypt; выбор не нормирован.
+- Влияет на: S1.
+- Решение: выбран BCrypt (`spring-security-crypto`); Argon2id добавил бы Bouncy Castle вне зафиксированного стека. (дата: 2026-10-06)
+
+### OQ-13 — Сырой `verification_token` идёт через RabbitMQ (S1)
+- Вопрос: raw одноразовый `verification_token` передаётся в payload события `user.registered` через RabbitMQ; auth письмо не рендерит, ссылку строит notification.
+- Влияет на: S1, S2.
+- Решение: docs это не запрещают; пересмотреть в контрактной работе S2 (альтернативы: auth рендерит ссылку сам либо внутренний fetch токена). (дата: 2026-10-06)
+
 ## Сводная таблица покрытия docs → слайс
 
 | Документ (docs/) | § | Покрывается слайсом(ами) |

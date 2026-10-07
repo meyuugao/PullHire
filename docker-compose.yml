@@ -89,6 +89,11 @@ services:
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_HTTP_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     mem_limit: 64m
     networks:
       - pullhire
@@ -111,6 +116,9 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
     ports:
       - "${AUTH_PORT:-8081}:8080"
     healthcheck: *service-healthcheck
@@ -271,11 +279,21 @@ services:
       NOTIFICATION_DB_URL: ${NOTIFICATION_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=notification}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@pullhire.local}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:-http://auth-service:8080/.well-known/jwks.json}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
     ports:
       - "${NOTIFICATION_PORT:-8088}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
     healthcheck: *service-healthcheck
     mem_limit: 192m
 

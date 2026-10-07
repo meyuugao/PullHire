@@ -71,3 +71,23 @@
 - Exit criteria S0 закрыты локально (8×`/healthz`, TLS/`/docs`, frontend) + CI.
 - Статус S0 `[~]` → `[x]` (header + index).
 - Следующий слайс S1 разблокирован (`depends_on: S0`).
+
+## 2026-10-06 — S1 Phase 1: context load
+
+- Прочитаны: `docs/requirements/` (9 файлов), `docs/source/` (PDF ТЗ + PPTX-шаблон презентации машинно нечитаемы — OQ-4), весь authored-пакет `docs/*`, `TODO.md`.
+- Уточнение терминологии: буквальный «Slice 1» = `S1` (auth+notification); «первая стадия» = `S0` — уже закрыт `[x]`. Работаем по `S1` (разблокирован, `depends_on: S0`).
+- S1 = auth-service + notification-service: идентичность, JWT RS256 (JJWT), 4 согласия 152-ФЗ, email-вертикаль через Mailpit.
+- Exit criteria S1: register → Mailpit → verify-email → login → refresh → /auth/me; роль неизменяема после регистрации; 4 согласия append-only; просроченный/чужой JWT → 401; ротация refresh-токенов; GET /notifications по JWT.
+- Контракты: `docs/api.md §3.1/§3.8`; `docs/data_model.md §3` (users, email_tokens, refresh_tokens, consents) + `§10` (notification_log).
+- Зафиксировано из S0: Jackson 3 (`tools.jackson.*`), problem+json, `X-Api-Version: 1`, /healthz + /readyz, Flyway per-schema, JWT RS256/JWKS.
+- Открыто: S0-каркас существует — layout S1 уточняется на Phase 2.
+
+## 2026-10-06 — S1 Phase 2+3: auth+notification implementation + e2e
+
+- Реализованы `auth-service` и `notification-service` + инфра (compose, gateway `/.well-known/jwks.json`, `.env.example`) строго в границах S1 (`TODO.md` ~163-182).
+- auth: Flyway-миграции схемы `auth` (users, email_tokens, refresh_tokens, consents append-only), RS256/JWKS (JJWT 0.13.0), BCrypt, JWT-фильтр локальной проверки; notification: Flyway `notification_log`, SMTP (Mailpit), консьюмер `user.registered` с дедупом по `event_id`, локальная проверка JWT по JWKS.
+- Тесты: auth 11/11, notification 14/14; `./gradlew build` зелёный.
+- Runtime e2e на живом стеке: все 11 exit criteria PASS — register→Mailpit→verify-email→login→refresh→/auth/me; дубль email 409; роль неизменяема; 4 согласия append-only (в БД 5 строк / 4 типа); ротация refresh (старый → 401); невалидный/чужой JWT → 401 `unauthenticated`; `GET /notifications` по JWT (direct + gateway); JWKS 200.
+- Исправления в ходе e2e (в границах S1): `@Autowired` на `RsaKeyProvider`; `spring-boot-starter-flyway` вместо голого `flyway-core` (Boot 4 не включал автоконфиг); `Instant`→`OffsetDateTime` в JDBC-биндинге; логирование в generic `ApiExceptionHandler`; операционный рестарт `api-gateway` (stale upstream DNS).
+- OQ-заметки: канал auth→notification в S1 временный (exchange `pullhire.events` topic, routing key `user.registered`, queue `notification.user-registered`, конверт `architecture §4.2`; без outbox/библиотеки — это S2); потеря `user.registered` при недоступном брокере — принятое ограничение до S2; `Idempotency-Key` не реализован (зона S9); `spring-boot-starter-mail`/`spring-boot-starter-flyway` отсутствуют в `docs/stack.md §2` (docs на ходу не правились); выбран BCrypt внутри пары `architecture §6.1`; TTL не нормированы доками (access PT15M / refresh P30D / email-токен 24h); `POST /auth/register` принимает опциональный `consents[]`.
+- Открыто: независимое ревью (oracle) и push — только после approve пользователя. Статус S1 не менялся.

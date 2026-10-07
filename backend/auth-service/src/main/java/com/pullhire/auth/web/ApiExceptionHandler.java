@@ -1,6 +1,10 @@
 package com.pullhire.auth.web;
 
+import com.pullhire.auth.error.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +21,13 @@ import java.util.List;
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex, HttpServletRequest request) {
+        return problem(ex.status(), ex.code(), ex.getMessage(), null, request);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorEnvelope> handleValidation(MethodArgumentNotValidException ex,
@@ -36,8 +47,22 @@ public class ApiExceptionHandler {
         return problem(status, code, message, null, request);
     }
 
+    /**
+     * Нарушение ограничения уникальности (например, гонка на UNIQUE {@code users.email}
+     * при конкурентной регистрации) — это конфликт состояния, а не ошибка сервиса
+     * ({@code docs/api.md §2}).
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorEnvelope> handleDataIntegrity(DataIntegrityViolationException ex,
+                                                             HttpServletRequest request) {
+        log.warn("Нарушение целостности данных: {}", ex.getMostSpecificCause().getMessage());
+        return problem(HttpStatus.CONFLICT, "conflict",
+                "Конфликт данных: нарушено ограничение уникальности", null, request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorEnvelope> handleGeneric(Exception ex, HttpServletRequest request) {
+        log.error("Unhandled exception", ex);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error",
                 "Внутренняя ошибка сервиса", null, request);
     }

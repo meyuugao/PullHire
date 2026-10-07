@@ -4,17 +4,37 @@ server:
 spring:
   application:
     name: notification-service
-  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
-  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # DataSource/Flyway (docs/architecture.md §5.2); values are 12-factor
   # placeholders sourced from .env (docs/deployment.md §4).
   datasource:
     url: ${NOTIFICATION_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=notification}
     username: ${NOTIFICATION_DB_ROLE:notification_service}
     password: ${NOTIFICATION_DB_PASSWORD:change-me-notification}
-  # SMTP target (dev = Mailpit); mailing logic lands in S1.
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/notification
+    default-schema: notification
+    schemas: notification
+  # SMTP target (dev = Mailpit). `from` is the envelope sender for outbound mail.
   mail:
     host: ${SMTP_HOST:mailpit}
     port: ${SMTP_PORT:1025}
+    from: ${SMTP_FROM:no-reply@pullhire.local}
+  # Event broker (docs/architecture.md §4.2); consumer with its own queue/binding.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+
+auth:
+  # Local RS256 verification via cached JWKS (docs/architecture.md §6.1); no per-request auth call.
+  jwks-url: ${AUTH_JWKS_URL:http://auth-service:8080/.well-known/jwks.json}
+
+app:
+  # Public SPA base URL, used to build email links (verify-email).
+  base-url: ${APP_BASE_URL:http://localhost:3000}
 
 management:
   endpoints:

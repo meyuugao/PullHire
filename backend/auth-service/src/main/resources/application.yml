@@ -4,13 +4,32 @@ server:
 spring:
   application:
     name: auth-service
-  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
-  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # DataSource/Flyway (docs/architecture.md §5.2); values are 12-factor
   # placeholders sourced from .env (docs/deployment.md §4).
   datasource:
     url: ${AUTH_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=auth}
     username: ${AUTH_DB_ROLE:auth_service}
     password: ${AUTH_DB_PASSWORD:change-me-auth}
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/auth
+    default-schema: auth
+    schemas: auth
+  # Event broker (docs/architecture.md §4.2); publisher only, no listeners in auth.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+
+app:
+  # Public SPA base URL, consumed by notification-service when building email links.
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  # JWT TTLs (docs/architecture.md §6.1): access short-lived, refresh rotatable.
+  jwt:
+    access-ttl: ${JWT_ACCESS_TTL:PT15M}
+    refresh-ttl: ${JWT_REFRESH_TTL:P30D}
 
 management:
   endpoints:
