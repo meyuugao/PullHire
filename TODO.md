@@ -31,7 +31,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ### Foundation
 - [x] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
-- [ ] S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
+- [x] S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
 - [ ] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
 ### Domain
@@ -197,7 +197,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
 
-**Статус:** `[ ]` · **Фаза:** `foundation`
+**Статус:** `[x]` · **Фаза:** `foundation`
 
 - **id:** S1
 - **depends_on:** S0
@@ -207,12 +207,12 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - **coverage:** api.md §auth/§notification; data_model.md §auth/§notification; requirements/roles; 152-ФЗ (согласия)
 
 **Exit criteria:**
-- [ ] полный цикл register → письмо в Mailpit → verify-email → login → refresh → /auth/me
-- [ ] роль неизменяема после регистрации
-- [ ] 4 типа согласий append-only
-- [ ] просроченный/чужой JWT → 401
-- [ ] refresh-токены ротируются
-- [ ] GET /notifications по JWT возвращает лог
+- [x] полный цикл register → письмо в Mailpit → verify-email → login → refresh → /auth/me
+- [x] роль неизменяема после регистрации
+- [x] 4 типа согласий append-only
+- [x] просроченный/чужой JWT → 401
+- [x] refresh-токены ротируются
+- [x] GET /notifications по JWT возвращает лог
 
 **Примечания / решение OQ:** —
 

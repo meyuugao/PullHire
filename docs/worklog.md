@@ -91,3 +91,11 @@
 - Исправления в ходе e2e (в границах S1): `@Autowired` на `RsaKeyProvider`; `spring-boot-starter-flyway` вместо голого `flyway-core` (Boot 4 не включал автоконфиг); `Instant`→`OffsetDateTime` в JDBC-биндинге; логирование в generic `ApiExceptionHandler`; операционный рестарт `api-gateway` (stale upstream DNS).
 - OQ-заметки: канал auth→notification в S1 временный (exchange `pullhire.events` topic, routing key `user.registered`, queue `notification.user-registered`, конверт `architecture §4.2`; без outbox/библиотеки — это S2); потеря `user.registered` при недоступном брокере — принятое ограничение до S2; `Idempotency-Key` не реализован (зона S9); `spring-boot-starter-mail`/`spring-boot-starter-flyway` отсутствуют в `docs/stack.md §2` (docs на ходу не правились); выбран BCrypt внутри пары `architecture §6.1`; TTL не нормированы доками (access PT15M / refresh P30D / email-токен 24h); `POST /auth/register` принимает опциональный `consents[]`.
 - Открыто: независимое ревью (oracle) и push — только после approve пользователя. Статус S1 не менялся.
+
+## 2026-10-07 — S1 закрыт [x]
+
+- Все 6 exit criteria S1 отмечены `[x]`; статус S1 `[ ]` → `[x]` (header + index).
+- Build-gate пройден на локально установленном Gradle 9.7.1 + JDK 21.0.10 без загрузки дистрибутива (`-Dorg.gradle.java.installations.auto-download=false`); все 8 модулей + тесты auth/notification зелёные.
+- Подтверждено: F1 (`DataIntegrityViolationException` → 409 `conflict`) и F2 (`OQ-13`) в коммите `4f25cd2` на `origin/main`.
+- `backend/gradle.properties`: `org.gradle.daemon=false` закоммичен в S1 (локальная настройка среды).
+- Примечание: репозиторий ожидает Gradle 8.14 (wrapper), полного 8.x локально нет — сборка проверена на 9.7.1.
