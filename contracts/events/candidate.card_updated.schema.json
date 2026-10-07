@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/candidate.card_updated.schema.json",
+  "title": "candidate.card_updated payload",
+  "description": "Payload of the candidate.card_updated event (candidate-service; docs/data_model.md §12, docs/architecture.md §6.2). Carries only the agreed search-projection fields and MUST NOT contain PII (no email, phone or full_name).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "visible_to_employers", "display_name", "headline", "industry_code", "specialization_code", "grade", "stack", "fsp_verified", "contact_released"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the candidate (candidate.profiles.id, logical reference)."
+    },
+    "visible_to_employers": {
+      "type": "boolean",
+      "description": "Owner visibility flag from privacy_settings; false hides the public card."
+    },
+    "display_name": {
+      "type": ["string", "null"],
+      "description": "Masked display name (first name + last-name initial); null when unset."
+    },
+    "headline": {
+      "type": ["string", "null"],
+      "description": "Short professional headline; null when unset."
+    },
+    "industry_code": {
+      "type": ["string", "null"],
+      "description": "Industry taxonomy code; null when unset."
+    },
+    "specialization_code": {
+      "type": ["string", "null"],
+      "description": "Specialization taxonomy code; null when unset."
+    },
+    "grade": {
+      "type": ["string", "null"],
+      "description": "Assigned category grade; null until assessment assigns one."
+    },
+    "stack": {
+      "type": "array",
+      "items": {
+        "type": ["string", "null"]
+      },
+      "description": "Technology stack tokens; entries may be null for unset values."
+    },
+    "fsp_verified": {
+      "type": "boolean",
+      "description": "Whether achievements are verified via ФСП."
+    },
+    "contact_released": {
+      "type": "boolean",
+      "description": "Whether contacts are currently released to the employer."
+    }
+  }
+}

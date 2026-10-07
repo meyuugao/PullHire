@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/candidate.contact_released.schema.json",
+  "title": "candidate.contact_released payload",
+  "description": "Payload of the candidate.contact_released event (candidate-service; docs/architecture.md §4.2). Mechanism for releasing contact data to the employer after invitation acceptance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "contact_email", "contact_phone", "released_at"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the candidate whose contacts are released (candidate.profiles.id, logical reference)."
+    },
+    "contact_email": {
+      "type": ["string", "null"],
+      "format": "email",
+      "description": "Released contact email; null when not provided."
+    },
+    "contact_phone": {
+      "type": ["string", "null"],
+      "description": "Released contact phone; null when not provided."
+    },
+    "released_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the contact release."
+    }
+  }
+}

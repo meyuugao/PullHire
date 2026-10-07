@@ -1,16 +1,60 @@
 server:
   port: ${SERVER_PORT:8080}
+  # Oversized uploads must still reach the app so they surface as a 413
+  # problem+json (not a connection reset) - keep swallowing the body.
+  tomcat:
+    max-swallow-size: -1
 
 spring:
   application:
     name: candidate-service
-  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
-  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # DataSource/Flyway (docs/architecture.md §5.2); values are 12-factor
   # placeholders sourced from .env (docs/deployment.md §4).
   datasource:
     url: ${CANDIDATE_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=candidate}
     username: ${CANDIDATE_DB_ROLE:candidate_service}
     password: ${CANDIDATE_DB_PASSWORD:change-me-candidate}
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/candidate
+    default-schema: candidate
+    schemas: candidate
+  # Event broker (docs/architecture.md §4.2); publishes card/contact events and
+  # consumes invitation.accepted. correlated publisher confirms let the outbox
+  # relay mark rows published only after the broker acks (docs/architecture.md §4.3).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+    publisher-confirm-type: correlated
+  # Resume upload caps (docs/api.md §2): file cap bound to app.resume.max-bytes;
+  # the request cap gets headroom for multipart overhead so a file exactly at the
+  # limit is not rejected by the envelope (OQ-15).
+  servlet:
+    multipart:
+      max-file-size: ${CANDIDATE_RESUME_MAX_BYTES:5242880}B
+      max-request-size: ${CANDIDATE_RESUME_REQUEST_MAX_BYTES:6291456}B
+
+auth:
+  # Local RS256 verification via cached JWKS (docs/architecture.md §6.1); no per-request auth call.
+  jwks-url: ${AUTH_JWKS_URL:http://auth-service:8080/.well-known/jwks.json}
+
+app:
+  # Public SPA base URL (docs/deployment.md §4).
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  # Resume file volume and upload cap (OQ-15); env matches docker-compose.
+  files-dir: ${CANDIDATE_FILES_DIR:/app/files}
+  resume:
+    max-bytes: ${CANDIDATE_RESUME_MAX_BYTES:5242880}
+
+# Event publisher reliability (S3): candidate-service owns
+# candidate.outbox_events (V5 migration) and explicitly opts in to the
+# event-lib outbox relay.
+pullhire:
+  outbox:
+    enabled: true
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus

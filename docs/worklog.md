@@ -136,3 +136,28 @@
 - Fixed E1 (blocker): dependency-free schema-conformance tests validate a serialized `EventEnvelope` and the `user.registered` payload against `contracts/events/*.schema.json`.
 - Fixed E4 (blocker): `scripts/check-event-compat.py` now diffs against a configurable BASE ref (PR base sha / push `before` / `origin/main`) with a negative self-test `scripts/check-event-compat-test.py`; wired into the `event-schemas` CI job.
 - Residual (unverified without a running stack): exit criteria 3 (broker-outage outbox durability) and 5 (correlation_id in real ≥2-service logs) rely on `scripts/smoke-compose.sh` / CI; no `@SpringBootTest` asserts the relay bean is absent for consumer-only services.
+
+## 2026-10-07 — S3 Phase 1: context load
+
+- Входы S3 извлечены: `TODO.md` S3; `docs/api.md §candidate`; `docs/data_model.md §candidate` (§4, §12); `docs/architecture.md`; `docs/stack.md`.
+- S2 закрыт `[~]` → `[x]` (header + index), S3 открыт `[ ]` → `[~]` (header + index).
+
+## 2026-10-07 — S3 scaffolding: contracts + compose + OQ
+
+- Добавлены контракты `contracts/events/{candidate.card_updated,candidate.contact_released,invitation.accepted}.schema.json` (draft 2020-12, `additionalProperties:false`) + регистрация в `contracts/events/README.md`.
+- candidate-service: named volume `candidate_files` → `/app/files` + env `CANDIDATE_FILES_DIR`/`CANDIDATE_RESUME_MAX_BYTES` в `docker-compose.yml` и `.env.example`; OQ-14..OQ-21 записаны в `TODO.md`.
+
+## 2026-10-07 — S3 implementation I+II: candidate-service domain + tests
+
+- candidate-service domain: profile/resume/PDF/privacy/card + contact-release (application-сервисы, `ingest/InvitationAcceptedListener`, контроллеры/DTO по `docs/api.md §3.2`, карточка `candidate.card_updated`/`candidate.contact_released` через outbox).
+- Тесты: 23 unit (standalone MockMvc + моки, PDFBox render, схемы контрактов, state-based идемпотентность OQ-22) — 23/23 зелёные; `:candidate-service:compileJava` ОК.
+
+## 2026-10-07 — S3 review fixes: font, dedup, 413, loopback, tests
+
+- F1 Unicode-шрифт `fonts/DejaVuSans.ttf` (Type0, embedded subset) вместо Helvetica→`?`; F2 дедуп `candidate.processed_events` (V6) + `EventIdDedup`/insert-claim и rebuild карточки перед release; F3 `spring.servlet.multipart` привязан к `CANDIDATE_RESUME_MAX_BYTES` + `server.tomcat.max-swallow-size: -1`; F4 candidate порт на `127.0.0.1`; F6/F7 фильтр null в stack/skills и scrubbing headline; F9 запись файла после commit; F10 JWKS по `kid`; F11 роль по всему списку; OQ-22..OQ-25.
+- Тесты 36/36 (13 suites): добавлены `ProfileServiceTest`, `PrivacyServiceTest`, `InternalCardControllerTest`, `ApiExceptionHandlerTest` (413 handler), кириллический PDF-кейс, dedup-кейсы listener. Примечание: реальный multipart-resolver путь в `standaloneSetup` недоступен (в Spring 7 нет `DispatcherServlet.setMultipartResolver`), поэтому контейнерный 413 покрыт unit-тестом handler'а + сервис-сайд `ResumeUploadLimitTest`.
+
+## 2026-10-07 — S3 residual fixes M1–M3
+
+- M1: `CardResponse`/`ProfileService` фильтруют null-элементы `stack`/`skills`/`soft_skills` (нет NPE→500 на `/internal/candidates/{id}/card`); M2: OQ-22 дополнен остаточной семантикой (hide → release skip, re-trigger отложен на S8; `show_contacts=false` без повторного триггера); M3: `CANDIDATE_RESUME_REQUEST_MAX_BYTES` (6 MiB) — запас multipart-запроса над файловым лимитом.
+- Тесты: 37/37 (13 suites) зелёные; `docker compose config --quiet` = 0.

@@ -32,10 +32,10 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 ### Foundation
 - [x] S0 — Bootstrap: репозиторий, Gradle multi-module, docker-compose каркас, CI
 - [x] S1 — auth-service + notification-service: идентичность, JWT, согласия 152-ФЗ, почта
-- [~] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
+- [x] S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
 ### Domain
-- [ ] S3 — candidate-service: профиль, резюме/PDF, приватность, карточка
+- [~] S3 — candidate-service: профиль, резюме/PDF, приватность, карточка
 - [ ] S4 — fsp-service: mock-адаптер ФСП, линк ID, кэш достижений
 - [ ] S5 — assessment-service: опрос, грейд, адаптивный IRT-lite тест, категория, cooldown
 - [ ] S6 — employer-service: компания и потребности
@@ -127,6 +127,43 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - Вопрос: raw одноразовый `verification_token` передаётся в payload события `user.registered` через RabbitMQ; auth письмо не рендерит, ссылку строит notification.
 - Влияет на: S1, S2.
 - Решение: docs это не запрещают; пересмотреть в контрактной работе S2 (альтернативы: auth рендерит ссылку сам либо внутренний fetch токена). (дата: 2026-10-06)
+
+### OQ-14 — PDF dep (S3)
+- Решение: Apache PDFBox 3.0.x (Apache-2.0) добавлен в candidate-service; в `docs/stack.md §1/§2/§5` не внесён, запись лицензии отложена. (дата: 2026-10-07)
+
+### OQ-15 — 413 limit (S3)
+- Решение: `docs/api.md §2` задаёт только код 413; выбран лимит 5 MiB (5242880), env `CANDIDATE_RESUME_MAX_BYTES`. (дата: 2026-10-07)
+
+### OQ-16 — hide semantics (S3)
+- Решение: `privacy_settings.visible_to_employers=false` → удаление строки `candidate.public_cards` + публикация `candidate.card_updated` с `visible_to_employers=false`; в `§4.4` колонки видимости нет (согласованное отклонение). (дата: 2026-10-07)
+
+### OQ-17 — multipart (S3)
+- Решение: `POST /candidate/resume` использует `multipart/form-data`, тогда как `docs/api.md §1` декларирует JSON-тела. (дата: 2026-10-07)
+
+### OQ-18 — /internal protection (S3)
+- Решение: сервис-сервис аутентификация в `docs/` не задана; только сетевое доверие (шлюз `/internal` не маршрутизирует). (дата: 2026-10-07)
+
+### OQ-19 — display_name masking (S3)
+- Решение: алгоритм в `§4.4` не задан; выбран детерминированный маск (имя + инициал фамилии). (дата: 2026-10-07)
+
+### OQ-20 — candidate_id semantics (S3)
+- Решение: `candidate.profiles.id` (логическая ссылка `§7.3`); согласовать до публикации `invitation.accepted` в S8. (дата: 2026-10-07)
+
+### OQ-21 — profiles.status draft/published (S3)
+- Решение: API-перехода нет; `published` выставляется при первом успешном `PUT /candidate/profile`. (дата: 2026-10-07)
+
+### OQ-22 — invitation.accepted idempotency (S3)
+- Решение: дедуп по `event_id` в новой таблице `candidate.processed_events` (миграция V6; `docs/architecture.md §4.2`); state-based флаг `candidate.public_cards.contact_released` остаётся вторичным гейтом. Hide с последующим reshow может сбросить `contact_released` в проекции, тогда как outreach хранит выданные контакты — принятое следствие. `candidate.contact_released` публикуется только при наличии хотя бы одного контакта; если `contact_email`/`contact_phone` оба null → no-op без флипа флага. (дата: 2026-10-07)
+- Остаточная семантика: если профиль скрыт (`visible_to_employers=false`) на момент обработки `invitation.accepted` — карточка не материализуется, release пропускается (повторный триггер определяет S8); если `show_contacts=false` на момент accept — событие не публикуется, поздняя смена флага не вызывает повторной доставки для того же принятого приглашения. (дата: 2026-10-07)
+
+### OQ-23 — bundled DejaVuSans.ttf для PDF (S3)
+- Решение: PDF-рендер использует встроенный `fonts/DejaVuSans.ttf` (Bitstream Vera/Arev, permissive) как Type0/embedded subset для Unicode (кириллица); лицензия в `docs/stack.md §5` пока не внесена. (дата: 2026-10-07)
+
+### OQ-24 — host-порты прочих сервисов (S3)
+- Решение: в compose только `candidate-service` опубликован на loopback (`127.0.0.1`); остальные сервисы публикуются на все интерфейсы — вне скоупа S3, привязать к loopback позднее либо принять для демо. (дата: 2026-10-07)
+
+### OQ-25 — `/readyz` — заглушка S1 (S3)
+- Решение: `/readyz` не проверяет БД/брокер (стаб S1, connection-free); завершить реальные readiness-проверки до S12. (дата: 2026-10-07)
 
 ## Сводная таблица покрытия docs → слайс
 
@@ -220,7 +257,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S2 — Событийная шина, outbox, идемпотентность (механика), наблюдаемость
 
-**Статус:** `[~]` · **Фаза:** `foundation`
+**Статус:** `[x]` · **Фаза:** `foundation`
 
 - **id:** S2
 - **depends_on:** S0
@@ -248,7 +285,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S3 — candidate-service: профиль, резюме/PDF, приватность, карточка
 
-**Статус:** `[ ]` · **Фаза:** `domain`
+**Статус:** `[~]` · **Фаза:** `domain`
 
 - **id:** S3
 - **depends_on:** S1, S2

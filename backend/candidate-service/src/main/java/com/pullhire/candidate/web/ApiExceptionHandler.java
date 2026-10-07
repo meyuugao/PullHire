@@ -1,5 +1,6 @@
 package com.pullhire.candidate.web;
 
+import com.pullhire.candidate.error.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -7,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -18,6 +20,11 @@ import java.util.List;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex, HttpServletRequest request) {
+        return problem(ex.status(), ex.code(), ex.getMessage(), null, request);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorEnvelope> handleValidation(MethodArgumentNotValidException ex,
                                                           HttpServletRequest request) {
@@ -25,6 +32,17 @@ public class ApiExceptionHandler {
                 .map(field -> new ErrorEnvelope.Detail(field.getField(), String.valueOf(field.getCode())))
                 .toList();
         return problem(HttpStatus.BAD_REQUEST, "validation_error", "Некорректные данные запроса", details, request);
+    }
+
+    /**
+     * Resume exceeds the configured multipart cap ({@code docs/api.md §2}); a
+     * custom too-large signal surfaces as {@link ApiException#payloadTooLarge}.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorEnvelope> handleTooLarge(MaxUploadSizeExceededException ex,
+                                                        HttpServletRequest request) {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "payload_too_large",
+                "Размер загружаемого файла превышает лимит", null, request);
     }
 
     @ExceptionHandler(ResponseStatusException.class)
