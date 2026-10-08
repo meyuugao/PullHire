@@ -300,3 +300,55 @@
 - Полный прогон :employer-service:test — BUILD SUCCESSFUL, 0 failures (DB-тесты 4 skipped без PostgreSQL URL); smoke — SMOKE OK (S2 + новый S6-блок: company/needs CRUD, need_deleted outbox, 401/403).
 - TODO.md: exit criteria S6 [x] ×3, статус [~]→[x] (заголовок + индекс).
 - Осталось: CI-skip residual БД-тестов (записан в S6.6).
+
+## 2026-10-08 — S7 Phase 1: scope + docs extraction
+- TODO.md slice 7 (S7) extracted verbatim by explorer — scope, depends_on S2–S5, 5 exit criteria, refs OQ-1/OQ-27/TD-1.
+- docs/requirements/selection.md — дословные выдержки: категория = специализация × грейд, ранжирование по подтверждённому профилю + ФСП, фильтры (специализация/грейд/категория/стек/ФСП), объяснимость выдачи, уточнение без потери подборки.
+- docs/data_model.md §7 — taxonomy, candidate_categories, candidate_cards (без PII), rank_signals (θ, fsp_achievements_weighted) — дословно.
+- docs/api.md §3.5 — только индекс эндпоинтов selection-service; полные контракты — в генерируемом OpenAPI.
+- docs/source (ТЗ PDF + qa-summary-fsp-2026.md) — S7-релевантные цитаты: категоризация, ранжирование, подборка с объяснимостью, фильтры.
+- TODO.md:70-73,178-181 — OQ-1 (веса ранжирования конфигурируемы, значений нет) и OQ-27 (валидация кодов против taxonomy — на S7 в момент формирования подборки) — дословно.
+- docs/backlog/closed_questions.md:85-91 — TD-1: любая завершённая попытка перепубликует category_assigned; grade_changed — audit only.
+- docs/selection.md — механика: невидимость до category_assigned, неподтверждённый грейд виден со статусом и ниже в ранжировании, θ+ФСП — входы, стек — только фильтр, freshness display-only, top-N + рекомендованные категории + объяснимость, θ работодателю не раскрывается, no cross-schema JOIN.
+- docs/architecture.md §4.2/§4.3/§6.2 + assumptions.md — консьюмеры category_assigned/card_updated/fsp.achievements_updated, идемпотентность по event_id, outbox, итоговая согласованность; card_updated несёт только согласованные поля (no-PII).
+
+## 2026-10-08 — S7 Phase 2: decomposition
+- oracle декомпозировал S7 → 20 под-задач (ST-7.1–7.20: миграции, сид, 3 консьюмера, каталог/поиск, веса+ранжирование, selections, 4 теста по exit-критериям); selection_results утверждена пользователем (закрывает пробел data_model для GET /selections/{id} и уточнения без потери); утверждён батчевый план Phase 3 (6 батчей, внутри батча параллельно).
+
+## 2026-10-08 — S7 Phase 3: batch 1 (миграции + конфиг)
+- ST-7.1 — V1__create_taxonomy.sql по data_model §7.1 + активация Flyway в selection-service (зависимости build.gradle.kts + spring.flyway в application.yml).
+- ST-7.3 — V2__create_processed_events.sql: идемпотентность консьюмеров по source_event_id (зеркало candidate V6).
+- ST-7.4/7.5/7.6 — V3 candidate_categories (§7.2), V4 candidate_cards (§7.3, без PII), V5 rank_signals (§7.4, без freshness/резюме).
+- ST-7.7 — V6__create_selection_results.sql: снимок подборки (request/recommended_categories/items jsonb, parent_selection_id) — закрытие пробела data_model, утверждено пользователем.
+
+## 2026-10-08 — S7 Phase 3: batch 2 (сид + консьюмеры)
+- Oracle-правки батча 1 закрыты (fix-9): jdbc+postgresql deps, именованные constraints V4/V5, унификация стиля; source_event_id оставлен намеренно.
+- ST-7.2 — selection_seed.sql: industry it + специализации + 5 грейдов (intern..lead, grade_order 0..4), идемпотентный ON CONFLICT (kind, code).
+- ST-7.8 — CategoryAssignedListener: upsert candidate_categories, θ из события отсутствует → NULL, republish-safe (TD-1), AmqpConfig (3 очереди + DLQ) + rabbitmq-блок yml, ProcessedEventRepository.
+- ST-7.9 — CardUpdatedListener: upsert candidate_cards без PII, visible_to_employers=false → delete, null spec/grade → skip.
+- ST-7.10 — AchievementsUpdatedListener: weighted 1.0/0.5/0.25 по place (OQ-1 placeholders), категория из candidate_categories (no-op если нет), theta не трогается, зеркало fsp_verified/count в карточки. Финальная компиляция BUILD SUCCESSFUL.
+
+## 2026-10-08 — S7 Phase 3: batch 2 fixes + batch 3
+- Oracle-находки батча 2 закрыты (fix-14): CardUpdatedListener DEDUP_COLUMN event_id→source_event_id (critical), null visible_to_employers → skip, null display_name → skip-guard.
+- ST-7.11 — GET /catalog/specializations|grades|categories: TaxonomyRepository (is_active=true, grades по grade_order), категории выводятся (специализация × грейд), categoryCode <spec>-<grade>.
+- ST-7.12 — GET /candidates?filters: INNER JOIN cards⋈categories (видимость = наличие категории), categoryConfirmed = cards.grade ≠ categories.grade, стек через GIN stack && :tags, PageResponse как в siblings, без PII.
+- ST-7.14 — RankingService: score = thetaWeight·coalesce(theta,0) + fspAchievementsWeight·weighted + fspVerifiedBonus, unconfirmedGradePenalty, только веса из SelectionProperties (OQ-1), topN, tie-break по candidate_id; RankSignalRepository.readMethod добавлен, write-side не тронут.
+
+## 2026-10-08 — S7 Phase 3: batch 3 fixes + batches 4-5
+- Oracle-находки батча 3 закрыты (fix-18): фильтры spec/grade переведены на category basis (candidate_categories), подтверждённость — лексикографическая группа перед score (инвариант «неподтверждённые ниже» строгий), snake_case @JsonProperty в catalog DTO.
+- ST-7.15 — POST /selections: OQ-27 валидация против активной taxonomy (ApiException → 400 validation_error), пул по категории + RankingService top-N, объяснимость §4.3 (4 качественных блока, θ/score не раскрываются), рекомендуемые категории = запрошенная + грейды той же специализации с кандидатами (иллюстративный дефолт, docs §4.2 недоопределяет — на items не влияет), снапшот в selection_results (jsonb, parent NULL).
+- ST-7.16 — GET /selections/{id} (findById, jsonb readValue тем же маппером, ответ = снапшот 1:1) + refinement: POST c parent_selection_id → новая строка, проверка родителя → 404, исходная не перезаписывается.
+- error/ApiException.java добавлен в selection (зеркало sibling-конвенции), обработчик в ApiExceptionHandler.
+
+## 2026-10-08 — S7 Phase 3: batches 4-5 fixes + batch 6 (тесты)
+- Oracle-находки батчей 4-5 закрыты (fix-21): пул подборки пагинируется до исчерпания категории до ранжирования (гарантия top-N по §4.2), глубина цепочек уточнения не ограничена — решение задокументировано (циклы невозможны).
+- ST-7.17 — CardConvergenceFlowTest: сходимость карточек по событиям, TD-1 republish + идемпотентность дубликатов, no-PII blacklist; скаффолдинг src/test, конвенции siblings (assumption-gated SELECTION_TEST_DB_URL, без Spring/Testcontainers, слушатели напрямую).
+- ST-7.18 — CandidateSearchPostgresDbTest: кандидат без category_assigned не возвращается; после — возвращается; visible_to_employers=false → исчезает.
+- ST-7.19/7.20 — SelectionFlowTest (4 блока объяснимости у каждого item, неподтверждённые ниже, θ не в JSON, OQ-27, снапшот=ответ) + RankInvarianceFlowTest (стек только фильтр, updated_at не влияет на позиции, RankInput blacklist, детерминизм). compileTestJava чист; прогон гейтился на SELECTION_TEST_DB_URL.
+
+## 2026-10-08 — S7 Phase 4: smoke + финальные фиксы
+- Oracle-находки батча 6 закрыты (fix-26): ≥2 выживших в stack-фильтре, tie-break по равным сигналам (D/E, ascending candidate_id), дубликат card_updated в convergence-тесте.
+- Smoke-прогон на реальном PG (docker compose postgres, Flyway selection, superuser URL + currentSchema=selection): 2 реальных бага — untyped Instant bind (CandidateCategoryRepository) и text[] && varchar[] (CandidateSearchRepository).
+- Фиксы (fix-28): utc() helper через OffsetDateTime (зеркало sibling JdbcRows.utc), textArray SqlTypeValue через createArrayOf("text") в 3 репозиториях (search/card upsert).
+- Фикс теста (fix-29): PgArray.equals не переопределён — array-safe сравнение (comparableRow/stackOf).
+- Итог: 4 класса / 5 тестов — все PASSED; exit-критерии 1-4 покрыты и зелёные.
