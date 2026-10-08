@@ -396,7 +396,7 @@ UNIQUE: нет (append-only). Понижение — только по иниц�
 | set_at | timestamptz | NOT NULL DEFAULT now() |
 
 Индексы: UNIQUE (candidate_id, scope); btree available_after.
-UNIQUE: `(candidate_id, scope)`.
+UNIQUE: `(candidate_id, scope)`. Cooldown ставится только на смену грейда; провал и уход на уровень ниже попытку не сжигают — для этих случаев запись не создаётся (`docs/testing_model.md §7.3`).
 
 ### 6.2. Регулярные задания: TaskCycleConfig, EmployerTaskPrompt, Task, TaskVersion, TaskAssignment, TaskSubmission
 
@@ -604,10 +604,14 @@ UNIQUE: `candidate_id`. Контактные данные в проекции о
 | theta | numeric(6,3) | NULL |
 | fsp_verified | boolean | NOT NULL DEFAULT false |
 | fsp_achievements_count | integer | NOT NULL DEFAULT 0, CHECK >= 0 |
+| fsp_achievements_weighted | numeric(6,3) | NOT NULL DEFAULT 0, CHECK >= 0 — сумма достижений с весом результата (победитель/призёр > участник отбора) |
 | updated_at | timestamptz | NOT NULL DEFAULT now() |
 
 Индексы: UNIQUE (candidate_id, category_code); btree category_code.
-UNIQUE: `(candidate_id, category_code)`. Формула ранжирования — `docs/selection.md`.
+UNIQUE: `(candidate_id, category_code)`. В ранжировании учитывается не только число
+достижений (`fsp_achievements_count`), но и их результативность
+(`fsp_achievements_weighted`), чтобы профиль нельзя было «набить» одними
+онлайн-явками; формула ранжирования — `docs/selection.md`.
 
 ## 8. Схема employer
 
@@ -675,6 +679,7 @@ UNIQUE: нет.
 | employer_contact | jsonb | NULL — снимок «способа связи» работодателя на момент создания (cross-schema join запрещён) |
 | salary_from | numeric(12,2) | NOT NULL, CHECK >= 0 |
 | salary_to | numeric(12,2) | NOT NULL, CHECK >= salary_from |
+| salary_basis | text | NOT NULL DEFAULT 'gross', CHECK ∈ (gross, net) — явная пометка: гросс или «на руки» |
 | status | text | NOT NULL DEFAULT 'sent', CHECK ∈ (sent, viewed, accepted, declined, expired) |
 | released_contact | jsonb | NULL — заполняется только при `contact_released` |
 | contact_released_at | timestamptz | NULL |
@@ -716,6 +721,7 @@ UNIQUE: нет (append-only).
 | stack | text[] | NULL |
 | salary_from | numeric(12,2) | NOT NULL, CHECK >= 0 |
 | salary_to | numeric(12,2) | NOT NULL, CHECK >= salary_from |
+| salary_basis | text | NOT NULL DEFAULT 'gross', CHECK ∈ (gross, net) — явная пометка: гросс или «на руки» |
 | status | text | NOT NULL DEFAULT 'published', CHECK ∈ (draft, published, closed) |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 | updated_at | timestamptz | NOT NULL DEFAULT now() |

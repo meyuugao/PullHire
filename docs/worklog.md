@@ -161,3 +161,7 @@
 
 - M1: `CardResponse`/`ProfileService` фильтруют null-элементы `stack`/`skills`/`soft_skills` (нет NPE→500 на `/internal/candidates/{id}/card`); M2: OQ-22 дополнен остаточной семантикой (hide → release skip, re-trigger отложен на S8; `show_contacts=false` без повторного триггера); M3: `CANDIDATE_RESUME_REQUEST_MAX_BYTES` (6 MiB) — запас multipart-запроса над файловым лимитом.
 - Тесты: 37/37 (13 suites) зелёные; `docker compose config --quiet` = 0.
+
+## 2026-10-08 — docs reconciliation vs qa-summary
+
+- Сверка authored-пакета `docs/` с `docs/source/qa-summary-fsp-2026.md`: патчи A1–A4 (неподтверждённый грейд показывается со статусом и опускается в ранжировании; cooldown не сжигается при провале/уходе на уровень ниже; результативность ФСП в ранжировании; GPU-ограничение стенда проверки) и добавления B1–B7 (пометка гросс/нетто, стенд жюри 32–64 ГБ RAM / ~8 CPU, post-deadline freeze, открытость репозитория к сдаче, вход через mock FSP ID, самотестирование жюри / демо-режим, раскрытие LLM-моделей).
