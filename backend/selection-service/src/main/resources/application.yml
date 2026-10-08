@@ -11,6 +11,33 @@ spring:
     url: ${SELECTION_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=selection}
     username: ${SELECTION_DB_ROLE:selection_service}
     password: ${SELECTION_DB_PASSWORD:change-me-selection}
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/selection
+    default-schema: selection
+    schemas: selection
+  # Event broker (docs/architecture.md §4.2); selection-service is
+  # consumer-only (no publisher confirms): it projects assessment/candidate/fsp
+  # events into its own read model.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+
+# Ranking-formula weights (ranking inputs docs/selection.md §3: theta + ФСП
+# achievements only). Numeric values are NOT fixed by the docs — deferred per
+# OQ-1; the values below are illustrative placeholders, all overridable via
+# app.selection.rank.* / env without code edits.
+app:
+  selection:
+    rank:
+      theta-weight: ${SELECTION_RANK_THETA_WEIGHT:1.0}                      # illustrative, OQ-1
+      fsp-achievements-weight: ${SELECTION_RANK_FSP_WEIGHT:0.5}             # illustrative, OQ-1
+      fsp-verified-bonus: ${SELECTION_RANK_FSP_VERIFIED_BONUS:0.25}         # illustrative, OQ-1
+      unconfirmed-grade-penalty: ${SELECTION_RANK_UNCONFIRMED_PENALTY:100.0} # illustrative, OQ-1
+      top-n: ${SELECTION_RANK_TOP_N:20}                                    # illustrative, OQ-1
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus
