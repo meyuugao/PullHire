@@ -1,5 +1,9 @@
 # PullHire — TODO / Slice Tracker
 
+## Build-заметка (для всех слайсов)
+- Dockerfile сервиса собирается через `./gradlew :<service>:bootJar <service>/src`.
+- Частый сбой: в Dockerfile сервиса не скопирован общий модуль. Тогда перед COPY сервисного `src` добавить `COPY event-lib/build.gradle.kts event-lib/build.gradle.kts` и `COPY event-lib/src event-lib/src`.
+
 > Трекер выполнения. Живёт в корне репозитория, обновляется по мере работы.
 > Источник требований и архитектуры: [`docs/`](./docs/) — ключевые:
 > [mvp_scope.md](docs/mvp_scope.md), [architecture.md](docs/architecture.md),

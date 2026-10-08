@@ -168,11 +168,12 @@ services:
       FSP_DB_ROLE: ${FSP_DB_ROLE:-fsp_service}
       FSP_DB_PASSWORD: ${FSP_DB_PASSWORD:-change-me-fsp}
       FSP_DB_URL: ${FSP_DB_URL:-jdbc:postgresql://postgres:5432/pullhire?currentSchema=fsp}
+      CANDIDATE_INTERNAL_URL: ${CANDIDATE_INTERNAL_URL:-http://candidate-service:8080}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-pullhire}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-rabbitmq}
     ports:
-      - "${FSP_PORT:-8083}:8080"
+      - "127.0.0.1:${FSP_PORT:-8083}:8080"
     healthcheck: *service-healthcheck
     mem_limit: 192m
 

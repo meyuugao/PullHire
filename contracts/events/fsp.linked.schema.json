@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/fsp.linked.schema.json",
+  "title": "fsp.linked payload",
+  "description": "Payload of the fsp.linked event (fsp-service; docs/fsp_integration.md §1, docs/data_model.md §5.1). Emitted on any link-state change, including unlink (link_status=unlinked) and registry failure (link_status=error). history_status stays independent of link failures: no_history is a successful empty result, never an error.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "fsp_id", "link_status", "history_status"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the candidate (candidate.profiles.id, logical reference)."
+    },
+    "fsp_id": {
+      "type": ["string", "null"],
+      "description": "External FSP participant id; null only for a degenerate unlink of an absent link."
+    },
+    "link_status": {
+      "type": "string",
+      "enum": ["pending", "linked", "unlinked", "error"],
+      "description": "Technical link state (docs/data_model.md §5.1)."
+    },
+    "history_status": {
+      "type": "string",
+      "enum": ["unknown", "present", "no_history"],
+      "description": "Achievement-history state, independent of link failures (docs/fsp_integration.md §6)."
+    }
+  }
+}

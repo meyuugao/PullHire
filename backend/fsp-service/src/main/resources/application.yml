@@ -4,13 +4,47 @@ server:
 spring:
   application:
     name: fsp-service
-  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
-  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # DataSource/Flyway (docs/architecture.md §5.2); values are 12-factor
   # placeholders sourced from .env (docs/deployment.md §4).
   datasource:
     url: ${FSP_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=fsp}
     username: ${FSP_DB_ROLE:fsp_service}
     password: ${FSP_DB_PASSWORD:change-me-fsp}
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/fsp
+    default-schema: fsp
+    schemas: fsp
+  # Event broker (docs/architecture.md §4.2). fsp-service is publish-only; the
+  # correlated publisher confirms let the outbox relay mark rows published only
+  # after the broker acks (docs/architecture.md §4.3).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+    publisher-confirm-type: correlated
+
+auth:
+  # Local RS256 verification via cached JWKS (docs/architecture.md §6.1); no per-request auth call.
+  jwks-url: ${AUTH_JWKS_URL:http://auth-service:8080/.well-known/jwks.json}
+
+app:
+  fsp:
+    # Registry seam implementation (docs/fsp_integration.md §1/§7): `mock` for the
+    # hackathon, a real client after. Selected by @ConditionalOnProperty.
+    adapter: ${FSP_ADAPTER:mock}
+  candidate:
+    # Internal base URL for sub → candidate.profiles.id identity resolution
+    # (docs/fsp_integration.md §2); network-trust, not routed via the gateway.
+    url: ${CANDIDATE_INTERNAL_URL:http://candidate-service:8080}
+
+# Event publisher reliability (S4): fsp-service owns fsp.outbox_events
+# (V3 migration) and explicitly opts in to the event-lib outbox relay.
+pullhire:
+  outbox:
+    enabled: true
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus

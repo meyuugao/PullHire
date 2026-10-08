@@ -133,6 +133,7 @@
 | GET | `/candidate/privacy` | Настройки приватности («что видно») |
 | PUT | `/candidate/privacy` | Изменение настроек приватности |
 | GET | `/internal/candidates/{id}/card` | Внутренняя карточка (privacy-filtered) для других сервисов |
+| GET | `/internal/candidates/by-user/{userId}` | Внутреннее сопоставление JWT `sub` → `candidate.profiles.id` для `fsp-service` |
 
 `candidate-service` — единственный владелец области видимости; событие
 `candidate.card_updated` несёт только согласованные поля

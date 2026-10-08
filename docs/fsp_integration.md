@@ -87,6 +87,19 @@ PostgreSQL схема fsp (fsp_links, achievements_cache)   [docs/data_model.md 
 обязательного входа только через сторонний сервис нет, но имитация входа через
 FSP ID - ожидаемый сценарий (`docs/source/qa-summary-fsp-2026.md`).
 
+**Сопоставление идентификаторов (`sub` → `candidate_id`).** JWT-claim `sub` - это
+логический `auth.users.id`, тогда как `candidate_id` во всех структурах схемы
+`fsp` (`fsp_links.candidate_id`, payload событий `fsp.linked` /
+`fsp.achievements_updated`, путь `/internal/fsp/{candidateId}`) - это
+`candidate.profiles.id` (`docs/data_model.md §5.1`). Поэтому `fsp-service` перед
+любой операцией привязки/отвязки/чтения разрешает `sub` в профиль через
+внутренний network-trust эндпоинт `candidate-service`
+`GET /internal/candidates/by-user/{userId}` (`docs/api.md §3.2`) и использует
+полученный `candidateId` как единое пространство идентификаторов. Если профиль
+ещё не создан, разрешение возвращает `404 not_found`. Отдельная колонка
+`user_id` в `fsp_links` не вводится: единственный источник полей - §5
+`docs/data_model.md`.
+
 ## 3. Принятая модель данных ФСП
 
 Поскольку структура данных реестра не выдана, команда **приняла собственную

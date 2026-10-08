@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/fsp.achievements_updated.schema.json",
+  "title": "fsp.achievements_updated payload",
+  "description": "Payload of the fsp.achievements_updated event (fsp-service; docs/fsp_integration.md §5, docs/data_model.md §5.2). Emitted when the cached achievement set of a link changes; the selection service re-ranks the candidate. An empty achievements array is a valid no_history/cleared state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "fsp_id", "history_status", "achievements"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the candidate (candidate.profiles.id, logical reference)."
+    },
+    "fsp_id": {
+      "type": ["string", "null"],
+      "description": "External FSP participant id."
+    },
+    "history_status": {
+      "type": "string",
+      "enum": ["unknown", "present", "no_history"],
+      "description": "Achievement-history state for the link (docs/data_model.md §5.1)."
+    },
+    "achievements": {
+      "type": "array",
+      "description": "Cached achievements; empty when history_status is no_history or the cache was cleared.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["external_achievement_id", "title", "event_type", "achieved_at", "place"],
+        "properties": {
+          "external_achievement_id": {
+            "type": ["string", "null"],
+            "description": "Registry's own achievement identifier."
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable achievement title."
+          },
+          "event_type": {
+            "type": ["string", "null"],
+            "description": "Event type/category (championship, selection, ...)."
+          },
+          "achieved_at": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Achievement date (ISO-8601 date), or null when unknown."
+          },
+          "place": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Resultativeness: 1 = winner, >=2 = placer, null = participant (docs/selection.md §3)."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 -- Transactional outbox for auth-service (docs/architecture.md §4.3).
--- Mirrors backend/event-lib/src/main/resources/com/pullhire/events/outbox-events.reference.sql.
+-- Mirrors backend/event-lib/src/main/resources/me/yuugao/pullhire/events/outbox-events.reference.sql.
 -- Lives in the `auth` schema only; no cross-schema access (docs/architecture.md §5.2).
 
 CREATE TABLE outbox_events (

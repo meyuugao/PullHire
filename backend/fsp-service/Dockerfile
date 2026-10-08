@@ -15,6 +15,8 @@ COPY selection-service/build.gradle.kts selection-service/build.gradle.kts
 COPY employer-service/build.gradle.kts employer-service/build.gradle.kts
 COPY outreach-service/build.gradle.kts outreach-service/build.gradle.kts
 COPY notification-service/build.gradle.kts notification-service/build.gradle.kts
+COPY event-lib/build.gradle.kts event-lib/build.gradle.kts
+COPY event-lib/src event-lib/src
 COPY fsp-service/src fsp-service/src
 
 RUN chmod +x gradlew && ./gradlew :fsp-service:bootJar --no-daemon

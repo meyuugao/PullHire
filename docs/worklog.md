@@ -165,3 +165,14 @@
 ## 2026-10-08 — docs reconciliation vs qa-summary
 
 - Сверка authored-пакета `docs/` с `docs/source/qa-summary-fsp-2026.md`: патчи A1–A4 (неподтверждённый грейд показывается со статусом и опускается в ранжировании; cooldown не сжигается при провале/уходе на уровень ниже; результативность ФСП в ранжировании; GPU-ограничение стенда проверки) и добавления B1–B7 (пометка гросс/нетто, стенд жюри 32–64 ГБ RAM / ~8 CPU, post-deadline freeze, открытость репозитория к сдаче, вход через mock FSP ID, самотестирование жюри / демо-режим, раскрытие LLM-моделей).
+- Package rename `com.pullhire` -> `me.yuugao.pullhire`: 180 files moved (`com/pullhire/**` -> `me/yuugao/pullhire/**`) across 14 source roots; updated package/import refs, `backend/build.gradle.kts` group, event-lib AutoConfiguration.imports, and 3 sql/resource slash paths; `git grep com.pullhire` = 0.
+
+## 2026-10-08 — build-note placement
+
+- Build-заметка размещена в шапке `TODO.md` сразу под заголовком: сборка сервис-Dockerfile + фикс пропущенного `event-lib` COPY.
+
+## 2026-10-08 — S4 fsp-service: mock adapter, link, achievements cache, events
+
+- Реализован `fsp-service`: миграции `fsp/V1..V3` (fsp_links, achievements_cache, outbox_events), сменный адаптер (`FspRegistryAdapter` + `MockFspRegistryAdapter`, фикстуры `error`/`no_history`), link/unlink (`FspLinkService`, `fsp.linked`/`fsp.achievements_updated` через outbox), owner/internal чтение (`/candidate/fsp/*`, `/internal/fsp/{candidateId}`), JWT/JWKS-фильтр, problem+json, `AppProperties` (`app.fsp.adapter`, `auth.jwks-url`), seed `db/seed/fsp_seed.sql` (present/no_history), контракты `fsp.linked`/`fsp.achievements_updated` + README `active`, Dockerfile `event-lib` COPY.
+- Тесты: 30/30 (8 suites) зелёные (`:fsp-service:test`); `:fsp-service:compileJava :fsp-service:compileTestJava` — `BUILD SUCCESSFUL`.
+- Review-fixes: sub→profile identity (candidate `/internal/candidates/by-user/{userId}` + fsp `CandidateProfileClient`), adapter failure preserves last good cache and emits no `fsp.achievements_updated`, unlink publishes empty achievements set, order-independent `sameAchievements`, real `/readyz` (DB+broker), fsp host port bound to loopback, `JsonSchema` `minimum`/`date`, DB-gated repo/seed test, D5 residual risk recorded; verify `candidate 39 (14) / fsp 38 (10, 3 DB-gated skipped)`, `git grep com.pullhire` = 0.

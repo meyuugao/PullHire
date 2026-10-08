@@ -7,7 +7,7 @@ plugins {
 }
 
 allprojects {
-    group = "com.pullhire"
+    group = "me.yuugao.pullhire"
     version = "0.1.0"
 
     repositories {
