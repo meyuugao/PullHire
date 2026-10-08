@@ -250,3 +250,53 @@
 - Fix(F2) — flow-level exposure-cap retire/exclude, RUNNING-flow NEEDS_REVIEW, and enforced-cooldown refusal coverage in AssessmentFlowTest.
 
 ## 2026-10-08 — Fix(MX) — grade-aware form assembly wired into start; grade-choice allows same-grade reconfirmation; cooldown treated per-candidate (data_model §6.1); ProctoringService.ingest standalone endpoint deferred; flow test uses production wiring.
+
+## 2026-10-08 — S6 Phase 1: scope + docs extraction
+- S6 scope извлечён из TODO.md verbatim (employer-service: companies + needs; depends_on S1, S2).
+- api.md §3.6, data_model.md §8, requirements/profiles.md (employer) извлечены.
+- docs/source: ТЗ PDF машинно нечитаем (OQ-4); qa-summary-fsp-2026.md employer-строки взяты.
+- Worklog-формат подтверждён.
+
+## 2026-10-08 — S6.1 employer-service: deps + publish-only конфиг
+- deps зеркально fsp (L7-28): :event-lib, jdbc, flyway+flyway-database-postgresql, amqp, jjwt 0.13.0; application.yml: datasource currentSchema=employer, flyway db/migration/employer, publisher-confirm correlated, auth.jwks-url, pullhire.outbox.enabled; Dockerfile COPY event-lib до service src.
+- publish-only: без объявлений очередей, топология pullhire.events не тронута; :employer-service:compileJava BUILD SUCCESSFUL.
+- oracle: 2 minor (stale S0-комментарий в yml, (S4)→(S6)) — исправлены по required_action; PASS.
+- TODO.md: S6 → [~] (заголовок+индекс); OQ-26 (employer.need_deleted, publish-only) записана до начала S6.1-коммита.
+
+## 2026-10-08 — S6.2 миграции employer (companies + needs + outbox)
+- V1__create_companies_and_needs.sql по data_model §8.1-8.2 verbatim: uq_companies_user_id (user_id — логическая ссылка, без FK), FK needs.company_id ON DELETE CASCADE, CHECK status ∈ (active, archived), idx company_id + (specialization_code, grade); без grade CHECK и триггера updated_at (в §8 их нет).
+- V2__create_outbox_events.sql — зеркало fsp V3 / event-lib reference: partial idx_outbox_events_unpublished, шапка §4.3, без retention.
+- Проверка по прецеденту S4: Flyway migrate на чистой схеме employer — V1+V2 success; каскад company→needs SQL-ом (2→0).
+- oracle: PASS; отложено на S6.5 — валидация specialization_code/grade против selection.taxonomy.
+
+## 2026-10-08 — S6.3 employer-service security wiring (аутентификация)
+- JwksKeyProvider / JwtAuthFilter / CurrentUser / ApiException — зеркально S5.24 (assessment): OncePerRequestFilter @Order(2), 8 public-префиксов, guard `/employer` роль `employer`, attrs employerUserId+employerRole; ApiExceptionHandler + handleApi (иначе 401/403 → 500).
+- 401 `unauthenticated` / 403 `forbidden`, problem+json ErrorEnvelope по api.md §2.
+- Standalone-тесты JwtAuthFilterTest: 6/6 (no-JWT, expired, wrong-role, attrs, public paths) — без БД/брокера.
+- oracle: PASS; заметки на S6.7: `payloadTooLarge` не используется (возможный 1-строчный cleanup), JwksKeyProviderTest опционален.
+
+## 2026-10-08 — S6.4 компания: GET|PUT /employer/company
+- domain/repo/application/web по образцу candidate-профиля: CompanyRepository upsert ON CONFLICT (user_id) DO UPDATE (uq_companies_user_id, Fix #7-race), RETURNING id + re-read; owner = CurrentUser.id().
+- Wire: snake_case @JsonProperty, id строкой (api.md §1), user_id/created_at/updated_at не на проводе; PUT 200 + body (идемпотентно), GET 404 not_found.
+- Валидация: @NotBlank @Size(255) name, @Email contact_email; без выдуманных лимитов (data_model §8.1 их не задаёт).
+- Тесты standalone (прецедент S3): 16/16 (service 7 + controller 9). oracle: PASS; на S6.7 — DB-gated upsert-тест (insert→update→created_at неизменен).
+
+## 2026-10-08 — S6.5 needs: owner-scoped CRUD
+- Need domain/repo/service/controller + PageResponse: two-step доступ — findById пуст → 404 not_found; компания-владелец не совпала → 403 forbidden (get/update/delete); update/delete SQL-scoped WHERE id AND company_id (Fix #7-race defense in depth).
+- Список — пагинация {items,page,size,total} (page=0, size=20, sort created_at,desc; прецедент NotificationsController); POST 201, PUT 200, DELETE 204 (без события — публикация в S6.6).
+- Wire: id строкой, snake_case, stack null→[], company_id не на проводе; status: POST null→active, PUT null→keep, иначе строго active|archived.
+- Валидация по OQ-27: title/specialization_code/grade непустые, без taxonomy-проверки (владелец S7); компании нет → 404.
+- Тесты standalone 29/29 (service 15 + controller 14, матрица 403/404). oracle: PASS; на S6.7 — DB-gated repo-тесты (upsert company + scoping needs) и PUT null-status-keep.
+
+## 2026-10-08 — S6.6 удаление needs + событие employer.need_deleted
+- Contract events/employer.need_deleted.schema.json (payload {id, company_id, user_id} — строки, envelope occurred_at несёт момент удаления; OQ-26): registry row active после assessment.grade_changed.
+- EventPublisher (employer) — narrowed-зеркало assessment; EventNames.EMPLOYER_NEED_DELETED.
+- NeedService.delete: publish строго после affected==0→404 guard, в той же @Transactional; publisher не вызывается на 403/404.
+- Conformance NeedDeletedPayloadSchemaTest (pullhire.contracts.dir + walk-up, fsp-verbatim gradle-блок); DB-тест NeedDeleteOutboxDbTest — commit: строка удалена + outbox-строка (string payload); rollback: ни строки, ни события. CI-skip residual: БД-тесты скипаются без PostgreSQL URL (механизм как AssessmentFlowTest, S5.25).
+- oracle: PASS; на S6.7: смоук ассертит событие из брокера/строку outbox после DELETE; опционально mock-тест delete→0 → 404 + no publish.
+
+## 2026-10-08 — S6.7 закрытие слайса S6
+- D1 DB-gated CompanyNeedsRepositoryDbTest (upsert created_at + needs scoping, skip-гейт как AssessmentFlowTest); D2 PUT null-status-keep; D4 JwksKeyProviderTest (fail-closed); D5 payloadTooLarge удалён; D3 скип (уже покрыт deleteUnknownIsNotFound).
+- Полный прогон :employer-service:test — BUILD SUCCESSFUL, 0 failures (DB-тесты 4 skipped без PostgreSQL URL); smoke — SMOKE OK (S2 + новый S6-блок: company/needs CRUD, need_deleted outbox, 401/403).
+- TODO.md: exit criteria S6 [x] ×3, статус [~]→[x] (заголовок + индекс).
+- Осталось: CI-skip residual БД-тестов (записан в S6.6).

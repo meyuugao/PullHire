@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/employer.need_deleted.schema.json",
+  "title": "employer.need_deleted payload",
+  "description": "Payload of the employer.need_deleted event (employer-service; docs/api.md §3.6, docs/data_model.md §8.2). Emitted through the transactional outbox when a hiring need is deleted; all identifiers are strings (docs/api.md §1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "company_id", "user_id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identifier of the deleted need (employer.needs.id)."
+    },
+    "company_id": {
+      "type": "string",
+      "description": "Identifier of the owning company (employer.companies.id)."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Identifier of the owning user (auth.users.id, logical reference)."
+    }
+  }
+}

@@ -28,6 +28,9 @@ public final class EventNames {
     public static final String ASSESSMENT_CATEGORY_ASSIGNED = "assessment.category_assigned";
     public static final String ASSESSMENT_GRADE_CHANGED = "assessment.grade_changed";
 
+    // employer-service (row 6)
+    public static final String EMPLOYER_NEED_DELETED = "employer.need_deleted";
+
     // outreach-service (row 7)
     public static final String INVITATION_SENT = "invitation.sent";
     public static final String INVITATION_VIEWED = "invitation.viewed";

@@ -4,13 +4,37 @@ server:
 spring:
   application:
     name: employer-service
-  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
-  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # DataSource/Flyway (docs/architecture.md §5.2); values are 12-factor
   # placeholders sourced from .env (docs/deployment.md §4).
   datasource:
     url: ${EMPLOYER_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=employer}
     username: ${EMPLOYER_DB_ROLE:employer_service}
     password: ${EMPLOYER_DB_PASSWORD:change-me-employer}
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/employer
+    default-schema: employer
+    schemas: employer
+  # Event broker (docs/architecture.md §4.2). employer-service is publish-only; the
+  # correlated publisher confirms let the outbox relay mark rows published only
+  # after the broker acks (docs/architecture.md §4.3).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+    publisher-confirm-type: correlated
+
+auth:
+  # Local RS256 verification via cached JWKS (docs/architecture.md §6.1); no per-request auth call.
+  jwks-url: ${AUTH_JWKS_URL:http://auth-service:8080/.well-known/jwks.json}
+
+# Event publisher reliability (S6): employer-service owns employer.outbox_events
+# and explicitly opts in to the event-lib outbox relay.
+pullhire:
+  outbox:
+    enabled: true
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus

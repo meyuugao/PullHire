@@ -39,11 +39,37 @@ pg_value() { # sql -> single trimmed scalar
   docker compose exec -T postgres psql -U "$PG_USER" -d "$PG_DB" -tAc "$1" 2>/dev/null | tr -d '\r[:space:]'
 }
 
-register_user() { # email corr -> HTTP status code
-  local email="$1" corr="$2" body
-  body="$(printf '{"email":"%s","password":"Sm0ke-Test-1","role":"candidate"}' "$email")"
+register_user() { # email corr [role] -> HTTP status code
+  local email="$1" corr="$2" role="${3:-candidate}" body
+  body="$(printf '{"email":"%s","password":"Sm0ke-Test-1","role":"%s"}' "$email" "$role")"
   curl -k -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth/register" \
     -H 'Content-Type: application/json' -H "X-Request-Id: $corr" -d "$body" || true
+}
+
+fetch_verify_token() { # email -> raw verification token (empty when not yet delivered)
+  python3 - "$MAILPIT_API" "$1" <<'PY' 2>/dev/null || true
+import json, re, sys, urllib.request
+api, email = sys.argv[1], sys.argv[2]
+try:
+    with urllib.request.urlopen(api + "?limit=50", timeout=5) as r:
+        data = json.load(r)
+except Exception:
+    sys.exit(1)
+msgs = data.get("messages", data if isinstance(data, list) else [])
+for m in msgs:
+    if email not in json.dumps(m):
+        continue
+    mid = m.get("ID", m.get("id"))
+    try:
+        with urllib.request.urlopen(api.rstrip("/messages") + "/message/%s" % mid, timeout=5) as r:
+            body = r.read().decode("utf-8", "replace")
+    except Exception:
+        continue
+    hit = re.search(r"token=([A-Za-z0-9_\-]+)", body)
+    if hit:
+        print(hit.group(1))
+        break
+PY
 }
 
 echo "==> docker compose up -d --build"
@@ -249,6 +275,181 @@ else
     echo "FAIL: outbox event for ${STOP_CORR} not delivered within 180s of broker restart"
     exit 1
   fi
+fi
+
+# =============================================================================
+# S6 checks — employer-service company + needs via gateway
+# =============================================================================
+echo "==> S6 employer company + needs flow via gateway"
+if [ "$have_psql" != "1" ] && ! curl -fsS "$MAILPIT_API" >/dev/null 2>&1; then
+  echo "  SKIP: psql and Mailpit API both unavailable, cannot verify employer email"
+else
+  S6_CORR="smoke-s6-$(date +%s)-$$"
+  S6_EMAIL="employer.${S6_CORR}@pullhire.local"
+  S6_PASS="Sm0ke-Test-1"
+  reg_code="$(register_user "$S6_EMAIL" "$S6_CORR" "employer")"
+  if [ "$reg_code" != "201" ]; then
+    echo "FAIL: POST /auth/register (employer) returned ${reg_code} (expected 201)"
+    exit 1
+  fi
+  echo "  POST /auth/register -> 201 for ${S6_EMAIL} (role employer, X-Request-Id: ${S6_CORR})"
+
+  # verify-email: the raw token travels only in the rendered email (Mailpit
+  # regex); auth.email_tokens stores the hash, so psql only confirms issuance.
+  VERIFY_TOKEN=""
+  deadline=$((SECONDS + 90))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    VERIFY_TOKEN="$(fetch_verify_token "$S6_EMAIL")"
+    if [ -n "$VERIFY_TOKEN" ]; then
+      break
+    fi
+    sleep 3
+  done
+  if [ -z "$VERIFY_TOKEN" ]; then
+    echo "FAIL: no verification token in Mailpit for ${S6_EMAIL} within 90s"
+    exit 1
+  fi
+  verify_code="$(curl -k -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth/verify-email" \
+    -H 'Content-Type: application/json' -H "X-Request-Id: $S6_CORR" \
+    -d "$(printf '{"token":"%s"}' "$VERIFY_TOKEN")" || true)"
+  if [ "$verify_code" != "200" ]; then
+    echo "FAIL: POST /auth/verify-email returned ${verify_code} (expected 200)"
+    exit 1
+  fi
+  echo "  POST /auth/verify-email -> 200"
+
+  LOGIN_RESP="$(curl -k -fsS -X POST "$GATEWAY/auth/login" \
+    -H 'Content-Type: application/json' -H "X-Request-Id: $S6_CORR" \
+    -d "$(printf '{"email":"%s","password":"%s"}' "$S6_EMAIL" "$S6_PASS")" 2>/dev/null || true)"
+  EMP_TOKEN="$(printf '%s' "$LOGIN_RESP" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)"
+  if [ -z "$EMP_TOKEN" ]; then
+    echo "FAIL: POST /auth/login returned no access_token for ${S6_EMAIL}"
+    exit 1
+  fi
+  echo "  POST /auth/login -> access_token issued"
+
+  put_code="$(curl -k -s -o /dev/null -w '%{http_code}' -X PUT "$GATEWAY/employer/company" \
+    -H 'Content-Type: application/json' -H "Authorization: Bearer $EMP_TOKEN" -H "X-Request-Id: $S6_CORR" \
+    -d '{"name":"Smoke Acme","contact_email":"hr@smoke.local"}' || true)"
+  if [ "$put_code" != "200" ]; then
+    echo "FAIL: PUT /employer/company returned ${put_code} (expected 200)"
+    exit 1
+  fi
+  echo "  PUT /employer/company -> 200"
+  get_code="$(curl -k -s -o /dev/null -w '%{http_code}' "$GATEWAY/employer/company" \
+    -H "Authorization: Bearer $EMP_TOKEN" -H "X-Request-Id: $S6_CORR" || true)"
+  if [ "$get_code" != "200" ]; then
+    echo "FAIL: GET /employer/company returned ${get_code} (expected 200)"
+    exit 1
+  fi
+  echo "  GET /employer/company -> 200"
+
+  NEED_RESP="$(curl -k -fsS -X POST "$GATEWAY/employer/needs" \
+    -H 'Content-Type: application/json' -H "Authorization: Bearer $EMP_TOKEN" -H "X-Request-Id: $S6_CORR" \
+    -d '{"title":"Smoke Backend","specialization_code":"backend","grade":"middle"}' 2>/dev/null || true)"
+  NEED_ID="$(printf '%s' "$NEED_RESP" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)"
+  if [ -z "$NEED_ID" ]; then
+    echo "FAIL: POST /employer/needs returned no id"
+    exit 1
+  fi
+  echo "  POST /employer/needs -> 201 (id ${NEED_ID})"
+  LIST_RESP="$(curl -k -fsS "$GATEWAY/employer/needs" \
+    -H "Authorization: Bearer $EMP_TOKEN" -H "X-Request-Id: $S6_CORR" 2>/dev/null || true)"
+  NEED_TOTAL="$(printf '%s' "$LIST_RESP" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("total",""))' 2>/dev/null || true)"
+  if [ "$NEED_TOTAL" != "1" ]; then
+    echo "FAIL: GET /employer/needs total=${NEED_TOTAL} (expected 1)"
+    exit 1
+  fi
+  echo "  GET /employer/needs -> 200 (total=1)"
+  need_put="$(curl -k -s -o /dev/null -w '%{http_code}' -X PUT "$GATEWAY/employer/needs/${NEED_ID}" \
+    -H 'Content-Type: application/json' -H "Authorization: Bearer $EMP_TOKEN" -H "X-Request-Id: $S6_CORR" \
+    -d '{"title":"Smoke Backend v2","specialization_code":"backend","grade":"middle"}' || true)"
+  if [ "$need_put" != "200" ]; then
+    echo "FAIL: PUT /employer/needs/${NEED_ID} returned ${need_put} (expected 200)"
+    exit 1
+  fi
+  echo "  PUT /employer/needs/${NEED_ID} -> 200"
+  need_del="$(curl -k -s -o /dev/null -w '%{http_code}' -X DELETE "$GATEWAY/employer/needs/${NEED_ID}" \
+    -H "Authorization: Bearer $EMP_TOKEN" -H "X-Request-Id: $S6_CORR" || true)"
+  if [ "$need_del" != "204" ]; then
+    echo "FAIL: DELETE /employer/needs/${NEED_ID} returned ${need_del} (expected 204)"
+    exit 1
+  fi
+  echo "  DELETE /employer/needs/${NEED_ID} -> 204"
+
+  # OQ-26 publish-only: the delete fans out via the employer outbox; no temp
+  # queues, no Rabbit inbound pattern. Correlation comes from X-Request-Id→MDC.
+  if [ "$have_psql" != "1" ]; then
+    echo "  SKIP need_deleted outbox assert: psql unavailable"
+  else
+    delivered=0
+    deadline=$((SECONDS + 60))
+    while [ "$SECONDS" -lt "$deadline" ]; do
+      cnt="$(pg_value "SELECT count(*) FROM employer.outbox_events WHERE correlation_id = '${S6_CORR}' AND event_type = 'employer.need_deleted' AND published_at IS NOT NULL")"
+      case "$cnt" in ''|*[!0-9]*) cnt=0 ;; esac
+      if [ "$cnt" != "0" ]; then
+        delivered=1
+        break
+      fi
+      sleep 3
+    done
+    if [ "$delivered" = "1" ]; then
+      echo "  employer.need_deleted outbox row published (correlation ${S6_CORR})"
+    else
+      echo "FAIL: no published employer.need_deleted outbox row for ${S6_CORR} within 60s"
+      exit 1
+    fi
+  fi
+
+  echo "==> S6 401/403 via gateway"
+  anon_code="$(curl -k -s -o /dev/null -w '%{http_code}' "$GATEWAY/employer/company" || true)"
+  if [ "$anon_code" != "401" ]; then
+    echo "FAIL: GET /employer/company without token returned ${anon_code} (expected 401)"
+    exit 1
+  fi
+  echo "  GET /employer/company without token -> 401"
+  CAND_CORR="smoke-s6-cand-$(date +%s)-$$"
+  CAND_EMAIL="candidate.${CAND_CORR}@pullhire.local"
+  cand_reg="$(register_user "$CAND_EMAIL" "$CAND_CORR" "candidate")"
+  if [ "$cand_reg" != "201" ]; then
+    echo "FAIL: POST /auth/register (candidate) returned ${cand_reg} (expected 201)"
+    exit 1
+  fi
+  CAND_TOKEN_VALUE=""
+  deadline=$((SECONDS + 90))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    CAND_TOKEN_VALUE="$(fetch_verify_token "$CAND_EMAIL")"
+    if [ -n "$CAND_TOKEN_VALUE" ]; then
+      break
+    fi
+    sleep 3
+  done
+  if [ -z "$CAND_TOKEN_VALUE" ]; then
+    echo "FAIL: no verification token in Mailpit for ${CAND_EMAIL} within 90s"
+    exit 1
+  fi
+  curl -k -fsS -X POST "$GATEWAY/auth/verify-email" \
+    -H 'Content-Type: application/json' -H "X-Request-Id: $CAND_CORR" \
+    -d "$(printf '{"token":"%s"}' "$CAND_TOKEN_VALUE")" >/dev/null
+  CAND_LOGIN="$(curl -k -fsS -X POST "$GATEWAY/auth/login" \
+    -H 'Content-Type: application/json' -H "X-Request-Id: $CAND_CORR" \
+    -d "$(printf '{"email":"%s","password":"%s"}' "$CAND_EMAIL" "$S6_PASS")" 2>/dev/null || true)"
+  CAND_TOKEN="$(printf '%s' "$CAND_LOGIN" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)"
+  if [ -z "$CAND_TOKEN" ]; then
+    echo "FAIL: POST /auth/login returned no access_token for ${CAND_EMAIL}"
+    exit 1
+  fi
+  forb_code="$(curl -k -s -o /dev/null -w '%{http_code}' "$GATEWAY/employer/company" \
+    -H "Authorization: Bearer $CAND_TOKEN" -H "X-Request-Id: $CAND_CORR" || true)"
+  if [ "$forb_code" != "403" ]; then
+    echo "FAIL: GET /employer/company with candidate token returned ${forb_code} (expected 403)"
+    exit 1
+  fi
+  echo "  GET /employer/company with candidate token -> 403"
 fi
 
 echo "SMOKE OK"

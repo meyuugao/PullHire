@@ -42,7 +42,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - [x] S3 — candidate-service: профиль, резюме/PDF, приватность, карточка
 - [x] S4 — fsp-service: mock-адаптер ФСП, линк ID, кэш достижений
 - [x] S5 — assessment-service: опрос, грейд, адаптивный IRT-lite тест, категория, cooldown
-- [ ] S6 — employer-service: компания и потребности
+- [x] S6 — employer-service: компания и потребности
 - [ ] S7 — selection-service: таксономия, категории, ранжирование, подборка с объяснимостью
 - [ ] S8 — outreach-service: LHH-приглашения, жизненный цикл, раскрытие контактов
 
@@ -168,6 +168,17 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ### OQ-25 — `/readyz` — заглушка S1 (S3)
 - Решение: `/readyz` не проверяет БД/брокер (стаб S1, connection-free); завершить реальные readiness-проверки до S12. (дата: 2026-10-07)
+
+### OQ-26 — Событие `employer.need_deleted` (S6)
+- Вопрос: architecture §3.1 («События: —» у employer-service) и data_model (событие не определено) не определяют поведение при удалении needs; dangling логические `need_id` (outreach.invitations §9.1, assessment.Task/EmployerTaskPrompt §6.2) остаются без сигнала.
+- Решение: employer-service публикует `employer.need_deleted` через outbox — publish-only, консьюмеров нет; payload: `id`, `company_id`, `user_id` (id — строки, wire-конвенция api.md §1; момент удаления — envelope `occurred_at`). Осознанное отклонение от docs, docs не правятся. (дата: 2026-10-08)
+- Остаточная семантика: прямой SQL-каскад company→needs (endpoint DELETE /employer/company отсутствует) события не публикует; dangling `need_id` в outreach/assessment допускаются до обработки консьюмерами события. (дата: 2026-10-08)
+- Влияет на: S6.1, S6.2, S6.6, S6.7; консьюмеры — будущие слайсы (S7/S8/S14).
+
+### OQ-27 — Валидация specialization_code/grade в employer (S6)
+- Вопрос: data_model §1 требует валидацию кодов на записи против засеянного selection.taxonomy, но схема selection и её справочник появляются только в S7; cross-schema чтение запрещено (§1), синхронный вызов ещё нечем обслужить.
+- Решение: в S6.5 employer-service валидирует только непустоту кодов (открытый словарь); проверка против taxonomy переносится на сервис-владельца S7 / момент формирования подборки. (дата: 2026-10-08)
+- Влияет на: S6.5, S7.
 
 ## Сводная таблица покрытия docs → слайс
 
@@ -355,7 +366,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S6 — employer-service: компания и потребности
 
-**Статус:** `[ ]` · **Фаза:** `domain`
+**Статус:** `[x]` · **Фаза:** `domain`
 
 - **id:** S6
 - **depends_on:** S1, S2
@@ -365,11 +376,11 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - **coverage:** api.md §employer; data_model.md §employer; requirements/profiles (работодатель)
 
 **Exit criteria:**
-- [ ] CRUD компании и needs владельцем
-- [ ] доступ к чужой компании/needs → 403
-- [ ] удаление needs корректно влияет на связанные сущности без cross-schema FK
+- [x] CRUD компании и needs владельцем
+- [x] доступ к чужой компании/needs → 403
+- [x] удаление needs корректно влияет на связанные сущности без cross-schema FK
 
-**Примечания / решение OQ:** —
+**Примечания / решение OQ:** OQ-26 — публикация `employer.need_deleted` через outbox при удалении needs (решение пользователя, 2026-10-08).
 
 ---
 

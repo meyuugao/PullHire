@@ -1,6 +1,7 @@
 package me.yuugao.pullhire.employer.web;
 
 import jakarta.servlet.http.HttpServletRequest;
+import me.yuugao.pullhire.employer.error.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,11 @@ import java.util.List;
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex, HttpServletRequest request) {
+        return problem(ex.status(), ex.code(), ex.getMessage(), null, request);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorEnvelope> handleValidation(MethodArgumentNotValidException ex,
