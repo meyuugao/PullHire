@@ -4,13 +4,68 @@ server:
 spring:
   application:
     name: assessment-service
-  # DataSource/Flyway activation arrives in S1+ (docs/architecture.md §5.2);
-  # S0 stubs stay connection-free so /healthz is robust. Values are 12-factor
+  # DataSource/Flyway (docs/architecture.md §5.2); values are 12-factor
   # placeholders sourced from .env (docs/deployment.md §4).
   datasource:
     url: ${ASSESSMENT_DB_URL:jdbc:postgresql://postgres:5432/pullhire?currentSchema=assessment}
     username: ${ASSESSMENT_DB_ROLE:assessment_service}
     password: ${ASSESSMENT_DB_PASSWORD:change-me-assessment}
+  # Per-schema migrations: one folder per service schema (docs/data_model.md §1).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/assessment
+    default-schema: assessment
+    schemas: assessment
+  # Event broker (docs/architecture.md §4.2). correlated publisher confirms let
+  # the outbox relay mark rows published only after the broker acks (§4.3).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:pullhire}
+    password: ${RABBITMQ_DEFAULT_PASS:change-me-rabbitmq}
+    publisher-confirm-type: correlated
+
+auth:
+  # Local RS256 verification via cached JWKS (docs/architecture.md §6.1); no per-request auth call.
+  jwks-url: ${AUTH_JWKS_URL:http://auth-service:8080/.well-known/jwks.json}
+
+# Grade-test parameters (adaptive stop rule docs/testing_model.md §5.2; cut-score
+# bands §6.2; cooldown §7.3; item exposure docs/data_model.md §6.1). Numeric
+# values are NOT fixed by the docs — deferred per OQ-1; the values below are
+# illustrative placeholders, all overridable via app.assessment.* / env. Cooldown
+# = 1 month is a decided value (Q-3, docs/assumptions.md §2).
+app:
+  assessment:
+    se-threshold: ${ASSESSMENT_SE_THRESHOLD:0.3}          # illustrative, OQ-1
+    ci-confidence: ${ASSESSMENT_CI_CONFIDENCE:1.96}       # z for §6.3 CI; illustrative, OQ-1
+    min-items: ${ASSESSMENT_MIN_ITEMS:10}                 # illustrative, OQ-1
+    max-items: ${ASSESSMENT_MAX_ITEMS:30}                 # illustrative, OQ-1
+    exposure-default: ${ASSESSMENT_EXPOSURE_DEFAULT:100}  # illustrative, OQ-1
+    cooldown-duration: ${ASSESSMENT_COOLDOWN:P1M}         # decided: 1 month (Q-3)
+    grades:                                                 # explicit valid grades (decided list)
+      - intern
+      - junior
+      - middle
+      - senior
+      - lead
+    cut-scores:                                           # illustrative per grade (OQ-1)
+      intern: -1.5
+      junior: -0.5
+      middle: 0.5
+      senior: 1.5
+      lead: 2.5
+    start-theta-by-grade:                                 # illustrative per grade (OQ-1)
+      intern: -1.0
+      junior: -0.5
+      middle: 0.0
+      senior: 0.5
+      lead: 1.0
+
+# Event publisher reliability (S4): assessment-service owns assessment.outbox_events
+# and explicitly opts in to the event-lib outbox relay.
+pullhire:
+  outbox:
+    enabled: true
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus

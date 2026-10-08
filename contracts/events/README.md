@@ -30,8 +30,8 @@ Canonical names come from `docs/architecture.md §1.2` and `§3.1`. Status is
 | `candidate.contact_released` | candidate-service | outreach-service, notification-service | [candidate.contact_released](candidate.contact_released.schema.json) | active |
 | `fsp.linked` | fsp-service | candidate-service (audit) | [fsp.linked](fsp.linked.schema.json) | active |
 | `fsp.achievements_updated` | fsp-service | selection-service | [fsp.achievements_updated](fsp.achievements_updated.schema.json) | active |
-| `assessment.category_assigned` | assessment-service | selection-service | planned | planned |
-| `assessment.grade_changed` | assessment-service | notification-service (audit) | planned | planned |
+| `assessment.category_assigned` | assessment-service | selection-service | [assessment.category_assigned](assessment.category_assigned.schema.json) | active |
+| `assessment.grade_changed` | assessment-service | notification-service (audit) | [assessment.grade_changed](assessment.grade_changed.schema.json) | active |
 | `invitation.sent` | outreach-service | notification-service | planned | planned |
 | `invitation.viewed` | outreach-service | — | planned | planned |
 | `invitation.accepted` | outreach-service | candidate-service | [invitation.accepted](invitation.accepted.schema.json) | active |

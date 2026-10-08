@@ -1,0 +1,30 @@
+# Test override for every assessment grade-test numeric parameter (OQ-1).
+# Values intentionally differ from the shipped illustrative defaults so binding
+# and overridability are both exercised (cooldown 2 months vs decided 1 month).
+app:
+  assessment:
+    se-threshold: 0.42
+    ci-confidence: 1.645
+    min-items: 12
+    max-items: 40
+    exposure-default: 55
+    cooldown-duration: P2M
+    grades:
+      - intern
+      - junior
+      - middle
+      - senior
+      - lead
+      - staff
+    cut-scores:
+      intern: -1.75
+      junior: -0.75
+      middle: 0.25
+      senior: 1.25
+      lead: 2.75
+    start-theta-by-grade:
+      intern: -1.25
+      junior: -0.75
+      middle: -0.25
+      senior: 0.25
+      lead: 0.75

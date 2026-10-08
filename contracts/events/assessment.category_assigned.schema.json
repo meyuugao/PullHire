@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/assessment.category_assigned.schema.json",
+  "title": "assessment.category_assigned payload",
+  "description": "Payload of the assessment.category_assigned event (assessment-service; docs/architecture.md §3.1 row 4, §4.3; docs/testing_model.md §7.1, §8; docs/backlog/closed_questions.md TD-1). Emitted through the transactional outbox on every completed attempt (including up/down and repeated attempts) with the current category; selection-service consumes it to update the category projection (selection.candidate_categories). θ is deliberately excluded — test results and θ are never revealed to employers (docs/testing_model.md §8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "specialization_code", "grade", "category_code", "session_id", "assigned_at"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the candidate (candidate.profiles.id, logical reference)."
+    },
+    "specialization_code": {
+      "type": "string",
+      "description": "Specialization taxonomy code; category = specialization × grade (docs/selection.md)."
+    },
+    "grade": {
+      "type": "string",
+      "description": "Assigned grade from the cut-score band (docs/testing_model.md §6.2)."
+    },
+    "category_code": {
+      "type": "string",
+      "description": "Assigned category code (specialization × grade), projected into selection.candidate_categories."
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Test session that produced the category; null on the manual needs_review path (docs/testing_model.md §6.3, §8)."
+    },
+    "assigned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant the category was assigned (ISO-8601); projection column assigned_at."
+    }
+  }
+}

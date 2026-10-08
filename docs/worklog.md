@@ -176,3 +176,77 @@
 - Реализован `fsp-service`: миграции `fsp/V1..V3` (fsp_links, achievements_cache, outbox_events), сменный адаптер (`FspRegistryAdapter` + `MockFspRegistryAdapter`, фикстуры `error`/`no_history`), link/unlink (`FspLinkService`, `fsp.linked`/`fsp.achievements_updated` через outbox), owner/internal чтение (`/candidate/fsp/*`, `/internal/fsp/{candidateId}`), JWT/JWKS-фильтр, problem+json, `AppProperties` (`app.fsp.adapter`, `auth.jwks-url`), seed `db/seed/fsp_seed.sql` (present/no_history), контракты `fsp.linked`/`fsp.achievements_updated` + README `active`, Dockerfile `event-lib` COPY.
 - Тесты: 30/30 (8 suites) зелёные (`:fsp-service:test`); `:fsp-service:compileJava :fsp-service:compileTestJava` — `BUILD SUCCESSFUL`.
 - Review-fixes: sub→profile identity (candidate `/internal/candidates/by-user/{userId}` + fsp `CandidateProfileClient`), adapter failure preserves last good cache and emits no `fsp.achievements_updated`, unlink publishes empty achievements set, order-independent `sameAchievements`, real `/readyz` (DB+broker), fsp host port bound to loopback, `JsonSchema` `minimum`/`date`, DB-gated repo/seed test, D5 residual risk recorded; verify `candidate 39 (14) / fsp 38 (10, 3 DB-gated skipped)`, `git grep com.pullhire` = 0.
+
+## 2026-10-08 — S5.1 assessment-service runtime deps
+- assessment-service runtime deps (jdbc/flyway/amqp/jjwt/event-lib) + application.yml (flyway/rabbit/jwks/outbox); `:assessment-service:compileJava` `BUILD SUCCESSFUL`.
+
+## 2026-10-08 — S5.2 typed assessment config
+- S5.2 — AssessmentProperties: typed config (cut-scores, SE threshold, min/max, start-θ, cooldown=1mo, exposure); values deferred OQ-1.
+
+## 2026-10-08 — S5.3 grade-testing migration
+- S5.3 — V1__create_grade_testing.sql: item_bank/test_sessions/attempts/grade_history/cooldowns per data_model §6.1.
+
+## 2026-10-08 — S5.4 outbox migration
+- S5.4 — V2__create_outbox_events.sql per event-lib reference.
+
+## 2026-10-08 — S5.5 item_bank domain + repository
+- S5.5 — item_bank domain + ItemBankRepository/exposure queries + repo/JdbcRows.
+
+## 2026-10-08 — S5.6 test_sessions + attempts domain + repositories
+- S5.6 — test_sessions/attempts domain + TestSessionRepository/AttemptRepository (prior-served variants).
+
+## 2026-10-08 — S5.7 grade_history repository
+- S5.7 — GradeHistoryRepository append-only + GradeDirection.
+
+## 2026-10-08 — S5.8 cooldowns repository
+- S5.8 — CooldownRepository upsert/findActive + Cooldown.
+
+## 2026-10-08 — S5.9 IRT-lite scorer
+- S5.9 — IrtScorer 1PL (θ Bayesian step + SE), pure domain.
+
+## 2026-10-08 — S5.10 FormAssembler
+- S5.10 — FormAssembler: deterministic form (form_seed/variant_seed), anchors, ≤1/family, exposure caps, no-reserve.
+
+## 2026-10-08 — S5.11 RoutingRules
+- S5.11 — RoutingRules: SE/min/max stop + next-item argmin|θ−b| (MST deferred).
+
+## 2026-10-08 — S5.12 GradeBandClassifier
+- S5.12 — GradeBandClassifier (cut-scores + CI/SE needs_review) + ciConfidence config.
+- S5.13 — item_bank synthetic generator + idempotent seed (anchors + template families per specialization; payload = model+key only, auto-checkable formats, no free-text per Decision D; writes assessment.item_bank only).
+- S5.14 — contracts/events: committed assessment.category_assigned + assessment.grade_changed payload schemas (draft 2020-12, no theta) + registry rows.
+- S5.24 — assessment-service JWT/JWKS security wiring: local RS256 via cached JWKS (Environment auth.jwks-url), JwtAuthFilter guarding /assessment/** with candidate role, assessmentUserId/assessmentRole attrs, CurrentUser + ApiException (mirrors fsp/candidate).
+- S5.15 — Assessment EventPublisher (assessment.category_assigned/grade_changed) over transactional outbox; MDC correlation id; payload-schema conformance tests.
+- S5.18 — POST /assessment/survey: SurveyService opens started test_sessions with survey_answers(jsonb)+declared_dimensions(text[]) for the JWT candidate, returns session_id; @Valid failures → 400 validation_error.
+- S5.20 — SessionStartService + AssessmentSessionController (POST /assessment/sessions/{id}/start) + SessionStartResponse: FormAssembler form from form_seed, persist form_seed/status, first attempt with variant_seed, presentation-only DTO, idempotent re-start.
+- S5.22 — GET /assessment/history read-only: composes candidate sessions→attempts + grade_history, CurrentUser scoping, HistoryResponse DTO.
+- S5.23 — GET /assessment/grade-eligibility: cooldown vs now() (eligible if absent/expired, else available_after), CurrentUser scoping, EligibilityResponse.
+
+## 2026-10-08 — oracle-fix batch + S5.16
+- S5.16 — completion orchestration: classify θ+SE, append grade_history, always republish category_assigned, grade_changed audit-only, cooldown only on up, never forced downgrade, needs_review to manual.
+- Fix(#8) — assessment_seed.sql projects v.status instead of hardcoded 'active'.
+- Fix(#2,#11) — EventPublisher always emits non-null assigned_at; contracts README assessment events flipped to active.
+- Fix(#3,#4,#10) — survey owner-side taxonomy validation (specialization/grade/concept codes) + documented MVP survey/grade-choice merge.
+- Fix(#1a,#6,#7) — SessionStartResponse snake_case + string ids; exposure increment+retire on fresh serve; race-safe idempotent start (DuplicateKey re-serve, match by order+item).
+- Fix(#1b,#5) — HistoryResponse snake_case + string ids; variant_seed dropped from wire.
+ - Fix(#9) — JwksKeyProvider fails closed for kid-less tokens with multiple JWKS keys.
+ - S5.17 — proctoring-flag ingestion (visibilitychange/fullscreen_exit/paste with timestamps into attempts.proctoring_flags) + needs_review marking (flags OR SE/CI via GradeBandClassifier), never auto-fail.
+  - S5.19 — POST /assessment/grade-choice fixes declared_grade/target_grade with start θ from startThetaByGrade; unknown grade 400, no forced downgrade, snake_case/string-id wire.
+## 2026-10-08 — consolidation batch (oracle fixes + S5.21)
+- S5.21 — POST /assessment/sessions/{id}/answers: AnswerService grades served items, persists via AttemptRepository, recomputes θ/SE (IrtScorer), routes (RoutingRules min|θ−b| / SE-after-min / forced-max), completes via CategoryAssignmentService (proctoring→needs_review); AnswerResponse anti-leak shape; exposure++ per serve.
+- Fix(#4-dim) — survey declared_dimensions validated as industry/specialization/grade (data_model §6.1); explicit grades config list decoupled from cutScores.
+- Fix(#7-race) — start idempotency via ON CONFLICT DO NOTHING (no tx abort); loser re-serves winner.
+- Fix(grade-scope) — CategoryAssignmentService scoped by session specialization_code; terminal no-op guard; publishGradeChanged requires non-null direction.
+- Fix(seed-exposure) — seed sets template exposure_limit (exposure-default), anchors NULL.
+
+## 2026-10-08 — S5.25 AssessmentFlowTest
+- S5.25 — AssessmentFlowTest: survey→grade-choice→session→category→outbox path (initial+retry rows, SE min/max, cooldown refusal, append-only/no-downgrade, boundary needs_review).
+
+## 2026-10-08 — F1 consolidation
+- Fix(F1-completion) — cooldown enforced on grade change (grade-choice 409 when active; complete() retains current grade without burning cooldown, still republishes category_assigned); candidate-initiated down signal; grade-choice status guard (started only, theta not clobbered); answer replay is a strict no-op; terminalOutcome from latest grade_history; publishGradeChanged requires non-null direction; ProctoringService wired into answers with append-merge.
+- Fix(F1-race) — attempt insert ON CONFLICT DO NOTHING covers both UNIQUE arms (order and item).
+- Fix(F1-dim) — declared_dimensions open-vocabulary (industry); grade-aware FormAssembler coverage.
+
+## 2026-10-08 — F2 consolidation
+- Fix(F2) — flow-level exposure-cap retire/exclude, RUNNING-flow NEEDS_REVIEW, and enforced-cooldown refusal coverage in AssessmentFlowTest.
+
+## 2026-10-08 — Fix(MX) — grade-aware form assembly wired into start; grade-choice allows same-grade reconfirmation; cooldown treated per-candidate (data_model §6.1); ProctoringService.ingest standalone endpoint deferred; flow test uses production wiring.

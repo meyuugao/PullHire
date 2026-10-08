@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/assessment.grade_changed.schema.json",
+  "title": "assessment.grade_changed payload",
+  "description": "Payload of the assessment.grade_changed event (assessment-service; docs/architecture.md §3.1 row 4; docs/testing_model.md §7.1; docs/backlog/closed_questions.md TD-1). Audit/notification-only: it does NOT update the category projection in selection-service. Mirrors an assessment.grade_history row (docs/data_model.md §6.1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "specialization_code", "grade", "direction", "category_code", "session_id", "reason"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the candidate (candidate.profiles.id, logical reference)."
+    },
+    "specialization_code": {
+      "type": "string",
+      "description": "Specialization taxonomy code for the grade change."
+    },
+    "grade": {
+      "type": "string",
+      "description": "Grade after the change (docs/testing_model.md §7.1)."
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["initial", "up", "down", "recheck"],
+      "description": "Direction of the grade change; matches assessment.grade_history.direction (docs/data_model.md §6.1)."
+    },
+    "category_code": {
+      "type": ["string", "null"],
+      "description": "Category code after the change; null when not (re)assigned (docs/data_model.md §6.1)."
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Test session that produced the change; null for a manual/recheck path (docs/data_model.md §6.1)."
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Free-form audit reason; null when not recorded."
+    }
+  }
+}
