@@ -1,5 +1,6 @@
 package me.yuugao.pullhire.outreach.web;
 
+import me.yuugao.pullhire.outreach.error.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,6 +26,11 @@ public class ApiExceptionHandler {
                 .map(field -> new ErrorEnvelope.Detail(field.getField(), String.valueOf(field.getCode())))
                 .toList();
         return problem(HttpStatus.BAD_REQUEST, "validation_error", "Некорректные данные запроса", details, request);
+    }
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex, HttpServletRequest request) {
+        return problem(ex.status(), ex.code(), ex.getMessage(), null, request);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

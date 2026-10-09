@@ -31,6 +31,14 @@ auth:
   # Local RS256 verification via cached JWKS (docs/architecture.md §6.1); no per-request auth call.
   jwks-url: ${AUTH_JWKS_URL:http://auth-service:8080/.well-known/jwks.json}
 
+app:
+  # Internal service URLs for the category check (selection-service) and the
+  # JWT sub → candidate profile resolution (candidate-service).
+  selection:
+    url: ${SELECTION_SERVICE_URL:http://selection-service:8080}
+  candidate:
+    url: ${CANDIDATE_SERVICE_URL:http://candidate-service:8080}
+
 # Event publisher reliability (S8): outreach-service owns outreach.outbox_events
 # and explicitly opts in to the event-lib outbox relay.
 pullhire:

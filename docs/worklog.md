@@ -363,3 +363,20 @@
 - Зависимости: S1/S2/S6/S7 [x]; S3 [~] (все 5 exit-критериев не закрыты) — влияние на S8 проверяется.
 - worklog.md — формат зафиксирован (заголовок + bullets); корневых рабочих доков нет.
 
+## 2026-10-08 — S8 Phase 2: декомпозиция + решения A/B/C
+- Oracle — S8 декомпозирован на 15 подзадач ST-8.1..8.15, 4 батча; конфирм layout — designer (ST-8.1: 2 файла, jjwt-трио вместо starter-security, publisher-confirm correlated).
+- Решение A (OQ-3, утверждено): employer_contact snapshot из тела POST /invitations, хранится как есть {contact_email, contact_phone, website}; ≥1 непустой канал, иначе 400 validation_error; без sync-вызова employer-service (TD-4 соблюдён).
+- Решение B (утверждено): проверка категории — sync GET /internal/candidates/{id}/category в selection-service (отклонение docs: одна строка в api.md §3.5); 404 ⇒ у приглашающего 400 validation_error.
+- Решение C (утверждено): одно письмо по candidate.contact_released (payload несёт contact_email); консьюмеры invitation.sent/accepted отложены — payload'ы без PII не позволяют вычислить получателя; OQ-22 (show_contacts=false ⇒ release не будет) — зафиксировать на ST-8.15.
+
+## 2026-10-08 — S8 Phase 3: wave 1 (инфра outreach + контракты + нотификация)
+- Параллельные лайны fixer'ов (outreach / contracts+selection / notification); артефакты доставлены коммитом 6ce0540.
+- ST-8.1 — outreach build.gradle.kts (jdbc/flyway/pg/amqp/event-lib/jjwt 0.13.0; без starter-web/security/validation) + application.yml (datasource OUTREACH_*, flyway outreach, rabbitmq publisher-confirm correlated, pullhire.outbox.enabled, auth.jwks-url).
+- ST-8.2 — V1 invitations (data_model §9.1 дословно), V2 invitation_events (§9.2, append-only), V3 outbox (зеркало event-lib/employer), V4 processed_events (зеркало selection).
+- ST-8.4 — JwksKeyProvider (зеркало employer F10), JwtAuthFilter (8 префиксов как у siblings, без role-gate — dual-role), CurrentUser.
+- ST-8.3 — contracts invitation.{sent,viewed,declined}.schema.json (зеркало accepted, additionalProperties:false) + README; SchemaConformanceTest зелёный.
+- ST-8.5 — selection GET /internal/candidates/{id}/category (CategoryRow/findByCandidateId, DTO snake_case, 404 not_found) + строка в api.md §3.5 (решение B).
+- ST-8.11 — notification ContactReleasedListener (claimRow: sent→skip, failed→re-send; source_event_id dedup), шаблон CONTACT_RELEASED, очередь notification.candidate-contact-released + DLQ.
+- Верификация wave 1: :outreach-service:compileJava, :selection-service:compileJava, :notification-service:compileJava, :event-lib:test SchemaConformance — PASS (в окружении исполнителей).
+- designer batch-конфирм: расхождений с docs нет; DTO категории минимален (намеренно); PUBLIC_PREFIXES — полный 8-префиксный sibling-набор.
+
