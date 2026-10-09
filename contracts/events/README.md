@@ -33,10 +33,10 @@ Canonical names come from `docs/architecture.md §1.2` and `§3.1`. Status is
 | `assessment.category_assigned` | assessment-service | selection-service | [assessment.category_assigned](assessment.category_assigned.schema.json) | active |
 | `assessment.grade_changed` | assessment-service | notification-service (audit) | [assessment.grade_changed](assessment.grade_changed.schema.json) | active |
 | `employer.need_deleted` | employer-service | — | [employer.need_deleted](employer.need_deleted.schema.json) | active |
-| `invitation.sent` | outreach-service | notification-service | planned | planned |
-| `invitation.viewed` | outreach-service | — | planned | planned |
+| `invitation.sent` | outreach-service | notification-service | [invitation.sent](invitation.sent.schema.json) | planned |
+| `invitation.viewed` | outreach-service | — | [invitation.viewed](invitation.viewed.schema.json) | planned |
 | `invitation.accepted` | outreach-service | candidate-service | [invitation.accepted](invitation.accepted.schema.json) | active |
-| `invitation.declined` | outreach-service | — | planned | planned |
+| `invitation.declined` | outreach-service | — | [invitation.declined](invitation.declined.schema.json) | planned |
 
 `assessment.task_completed` (`[ext]`) and any `[opt]` events are out of the MVP
 core scope (`docs/architecture.md §3.1` footnotes) and are not registered yet.

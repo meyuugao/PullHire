@@ -34,6 +34,8 @@ public class AmqpConfig {
     public static final String EVENTS_EXCHANGE = "pullhire.events";
     public static final String USER_REGISTERED_QUEUE = "notification.user-registered";
     public static final String USER_REGISTERED_ROUTING_KEY = "user.registered";
+    public static final String CONTACT_RELEASED_QUEUE = "notification.candidate-contact-released";
+    public static final String CONTACT_RELEASED_ROUTING_KEY = "candidate.contact_released";
 
     @Bean
     public TopicExchange pullhireEventsExchange() {
@@ -69,6 +71,37 @@ public class AmqpConfig {
         return BindingBuilder.bind(userRegisteredDeadLetterQueue)
                 .to(pullhireEventsDeadLetterExchange)
                 .with(USER_REGISTERED_QUEUE);
+    }
+
+    /** Durable source queue; on exhaustion rejects to {@code pullhire.events.dlx}. */
+    @Bean
+    public Queue contactReleasedQueue() {
+        return ConsumerRetryConfig.durableQueue(CONTACT_RELEASED_QUEUE).build();
+    }
+
+    /** Dead-letter queue for the source queue ({@code <queue>.dlq} convention). */
+    @Bean
+    public Queue contactReleasedDeadLetterQueue() {
+        return QueueBuilder.durable(ConsumerRetryConfig.deadLetterQueueName(CONTACT_RELEASED_QUEUE)).build();
+    }
+
+    @Bean
+    public Binding contactReleasedBinding(
+            @Qualifier("contactReleasedQueue") Queue contactReleasedQueue,
+            TopicExchange pullhireEventsExchange) {
+        return BindingBuilder.bind(contactReleasedQueue)
+                .to(pullhireEventsExchange)
+                .with(CONTACT_RELEASED_ROUTING_KEY);
+    }
+
+    /** Binds {@code notification.candidate-contact-released.dlq} to the shared DLX. */
+    @Bean
+    public Binding contactReleasedDeadLetterBinding(
+            @Qualifier("contactReleasedDeadLetterQueue") Queue contactReleasedDeadLetterQueue,
+            @Qualifier("pullhireEventsDeadLetterExchange") DirectExchange pullhireEventsDeadLetterExchange) {
+        return BindingBuilder.bind(contactReleasedDeadLetterQueue)
+                .to(pullhireEventsDeadLetterExchange)
+                .with(CONTACT_RELEASED_QUEUE);
     }
 
     /** Envelope/payload JSON (Jackson 3, {@code tools.jackson}) for consumed events. */

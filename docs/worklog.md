@@ -352,3 +352,14 @@
 - Фиксы (fix-28): utc() helper через OffsetDateTime (зеркало sibling JdbcRows.utc), textArray SqlTypeValue через createArrayOf("text") в 3 репозиториях (search/card upsert).
 - Фикс теста (fix-29): PgArray.equals не переопределён — array-safe сравнение (comparableRow/stackOf).
 - Итог: 4 класса / 5 тестов — все PASSED; exit-критерии 1-4 покрыты и зелёные.
+
+## 2026-10-08 — S8 Phase 1: context load
+- TODO.md S8 — скоуп извлечён: outreach-service (LHH-приглашения, жизненный цикл, раскрытие контактов), 5 exit-критериев, depends_on S1,S2,S3,S6,S7.
+- selection.md §6.1 — поля приглашения: message, зарплата «от–до» (руб., gross/net — обязательна), company_name, employer_contact snapshot; привязка к вакансии не обязательна.
+- data_model.md §9/§12/§13 — invitations (17 полей) + invitation_events (append-only, 6 event_type); статусы sent/viewed/accepted/declined/expired; контакты раскрываются только после accept (§12).
+- api.md §3.7 — GET|POST /invitations, POST /invitations/{id}/mark-viewed|accept|decline; глобально: пагинация page/size/sort, Idempotency-Key на POST-приглашения, error-конверт problem+json (§2).
+- roles.md — правила 1–3: зарплата обязательна, раскрытие контактов только после принятия/отклика, статусы видны обеим сторонам.
+- closed_questions.md TD-4 — резолюция: snapshot employer_contact без cross-schema join; OQ-3 (TODO.md:80–83) — «типовой snapshot, уточнение при старте S8» → решение требуется на старте S8.
+- Зависимости: S1/S2/S6/S7 [x]; S3 [~] (все 5 exit-критериев не закрыты) — влияние на S8 проверяется.
+- worklog.md — формат зафиксирован (заголовок + bullets); корневых рабочих доков нет.
+

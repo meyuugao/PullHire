@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pullhire.local/contracts/events/invitation.declined.schema.json",
+  "title": "invitation.declined payload",
+  "description": "Payload of the invitation.declined event. Producer: outreach-service (S8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["invitation_id", "candidate_id", "employer_id"],
+  "properties": {
+    "invitation_id": {
+      "type": "string",
+      "description": "Identifier of the declined invitation."
+    },
+    "candidate_id": {
+      "type": "string",
+      "description": "Identifier of the invited candidate (candidate.profiles.id, logical reference)."
+    },
+    "employer_id": {
+      "type": "string",
+      "description": "Identifier of the employer that sent the invitation."
+    }
+  }
+}

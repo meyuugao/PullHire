@@ -3,6 +3,7 @@ package me.yuugao.pullhire.selection.repo;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -42,6 +43,24 @@ public class CandidateCategoryRepository {
                         + " assigned_at = EXCLUDED.assigned_at,"
                         + " updated_at = now()",
                 candidateId, specializationCode, grade, categoryCode, sourceEventId, utc(assignedAt));
+    }
+
+    /** Category row for the internal candidate check ({@code docs/api.md §3.5}). */
+    public record CategoryRow(String specializationCode, String grade, String categoryCode) {
+    }
+
+    /**
+     * Reads the candidate's current category row, if any.
+     */
+    public Optional<CategoryRow> findByCandidateId(long candidateId) {
+        return jdbc.query(
+                "SELECT specialization_code, grade, category_code"
+                        + " FROM candidate_categories WHERE candidate_id = ?",
+                (rs, rowNum) -> new CategoryRow(
+                        rs.getString("specialization_code"),
+                        rs.getString("grade"),
+                        rs.getString("category_code")),
+                candidateId).stream().findFirst();
     }
 
     /**

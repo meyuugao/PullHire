@@ -14,12 +14,18 @@ import org.springframework.stereotype.Component;
 public class TemplateRenderer {
 
     public static final String VERIFY_EMAIL = "verify_email";
+    public static final String CONTACT_RELEASED = "contact_released";
 
     public RenderedEmail render(String templateCode, String recipientEmail, String verificationUrl) {
         return switch (templateCode) {
             case VERIFY_EMAIL -> renderVerifyEmail(verificationUrl);
+            case CONTACT_RELEASED -> renderContactReleased();
             default -> throw new IllegalArgumentException("Неизвестный шаблон письма: " + templateCode);
         };
+    }
+
+    public RenderedEmail render(String templateCode, String recipientEmail) {
+        return render(templateCode, recipientEmail, null);
     }
 
     private RenderedEmail renderVerifyEmail(String verificationUrl) {
@@ -28,6 +34,13 @@ public class TemplateRenderer {
                 + "Чтобы подтвердить адрес электронной почты, перейдите по ссылке:\n"
                 + verificationUrl + "\n\n"
                 + "Ссылка одноразовая. Если вы не регистрировались, просто проигнорируйте это письмо.\n";
+        return new RenderedEmail(subject, body);
+    }
+
+    private RenderedEmail renderContactReleased() {
+        String subject = "PullHire — контакты раскрыты";
+        String body = "Здравствуйте!\n\n"
+                + "Контакты раскрыты: работодателю открыты ваши контактные данные после принятия приглашения.\n";
         return new RenderedEmail(subject, body);
     }
 
