@@ -380,3 +380,15 @@
 - Верификация wave 1: :outreach-service:compileJava, :selection-service:compileJava, :notification-service:compileJava, :event-lib:test SchemaConformance — PASS (в окружении исполнителей).
 - designer batch-конфирм: расхождений с docs нет; DTO категории минимален (намеренно); PUBLIC_PREFIXES — полный 8-префиксный sibling-набор.
 
+## 2026-10-10 — S8 Phase 3: wave 2 (домен outreach) + wave 3
+- Wave 2 (fixer, outreach lane) — ST-8.6..8.10: репозитории (JdbcRows/InvitationRepository/InvitationEventRepository/ProcessedEventRepository), domain/Invitation, CategoryCheckClient + CandidateUserClient (3s, HttpClient mirror fsp), ApiException+handler, InvitationService (create/validate→category gate, transitions 403/404/409, outbox invitation.*), InvitationController+DTO (role dispatch, 201), ContactReleasedListener (dedup event_id, markReleased by candidate, per-row contact_released audit), AmqpConfig (outreach.candidate-contact-released + DLQ).
+- Верификация: :outreach-service:compileJava PASS (JDK 21; дефолтный JDK 26 ломает Gradle DSL — env-проблема, не код).
+
+## 2026-10-10 — S8 Phase 4/5: верификация, гейт, push
+- Oracle per-ST верификация: 12 ST pass, 3 minor (flyway starter, contract-parity для эмулированной candidate-ноги, строка хронологии) — все закрыты fixer'ом.
+- Oracle финальный гейт: все 5 exit-критериев MET (evidence file:line в отчёте); SLICE COMPLETE.
+- ST-8.13 — ContactReleasedListenerTest 3/3 PASS (Gradle test-worker несовместим с кириллическим путём чекаута — env-блок; честный прогон 3/3 + UserRegisteredListenerTest 8/8 без регрессий).
+- ST-8.14 — отклонение зафиксировано: candidate-нога эмулирована test-double с parity-проверкой против contracts/events/candidate.contact_released.schema.json; полный сквозной E2E — S12 (7-step smoke).
+- TODO.md: S8 [ ] → [x], чекбоксы exit-критериев закрыты. Push на slice после approval.
+
+

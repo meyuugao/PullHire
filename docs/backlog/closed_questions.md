@@ -80,6 +80,22 @@
 - Статус: решён командой.
 - Резолюция: auth рендерит `verification_url` в той же транзакции; payload несёт `verification_url`, поле `verification_token` удалено из `contracts/events/user.registered.schema.json`. См. `../worklog.md` (S2 foundation).
 
+### OQ-3. Snapshot `employer_contact` в приглашении (S8)
+
+- Что: какой типовой snapshot контакта работодателя несёт приглашение без cross-schema join.
+- Откуда: `TODO.md:80–83`; `../data_model.md §9.1` (TD-4).
+- Действие: зафиксировать источник и форму snapshot на старте S8.
+- Статус: решён командой.
+- Резолюция: snapshot заполняется из тела POST /invitations, хранится как есть `{"contact_email": string|null, "contact_phone": string|null, "website": string|null}`; минимум 1 непустой канал, иначе 400 validation_error; без sync-вызова employer-service (TD-4 соблюдён, снимок фиксируется на момент создания). См. `../worklog.md` (S8 Phase 2, 2026-10-10).
+
+### OQ-22 residual. Нет release при `show_contacts=false` (S8)
+
+- Что: кандидат с `show_contacts=false` на accept не получит release и повторного триггера.
+- Откуда: S3 (OQ-22); `../worklog.md` (S8 Phase 2).
+- Действие: зафиксировать остаточную семантику на S8.
+- Статус: осознанная граница.
+- Резолюция: приглашение для такого кандидата завершается без раскрытия контактов; повторный триггер не предусмотрен. См. `../worklog.md` (S8 Phase 2, 2026-10-10).
+
 ## 3. Группа TD. Технический долг (TD-N)
 
 ### TD-1. Event-contract: republish `category_assigned`
@@ -180,3 +196,4 @@
 | 2026-10-06 | Финальное ревью | TD-3 (ссылка `data_model §4.1`); TD-7 (пакет правок финального ревью), TD-8 (артефакт экспорта doc/pdf) |
 | 2026-10-07 | S2: event-lib + outbox + наблюдаемость | OQ-7, OQ-8 (event-lib publisher/consumer + outbox), OQ-13 (`verification_url`); D1 (модуль `backend/event-lib`), D4 (outbox для всех событий) |
 | 2026-10-08 | S4: fsp-service | D5 (принятый остаточный риск претензии невладеемого `fsp_id`) |
+| 2026-10-10 | S8: outreach-service | OQ-3 (employer_contact snapshot из тела POST /invitations, ≥1 канал) |

@@ -48,9 +48,9 @@ class ContactReleasedListenerTest {
                         "+70000000000", "2026-10-08T10:00:00Z"));
     }
 
-    private static NotificationLog row(long id, NotificationStatus status) {
+    private static NotificationLog row(long id, String eventId, NotificationStatus status) {
         return new NotificationLog(id, 42L, "contact@example.com", "contact_released",
-                "candidate.contact_released", "evt-x", status, null,
+                "candidate.contact_released", eventId, status, null,
                 status == NotificationStatus.FAILED ? "previous failure" : null,
                 Instant.now(), status == NotificationStatus.SENT ? Instant.now() : null);
     }
@@ -75,7 +75,7 @@ class ContactReleasedListenerTest {
 
     @Test
     void sentEventIdIsSkipped() {
-        when(logs.findBySourceEventId("evt-1")).thenReturn(Optional.of(row(1L, NotificationStatus.SENT)));
+        when(logs.findBySourceEventId("evt-1")).thenReturn(Optional.of(row(1L, "evt-1", NotificationStatus.SENT)));
 
         listener.onContactReleased(event("evt-1"));
 
@@ -85,7 +85,7 @@ class ContactReleasedListenerTest {
 
     @Test
     void failedPriorAttemptIsReusedAndReSent() {
-        when(logs.findBySourceEventId("evt-1")).thenReturn(Optional.of(row(20L, NotificationStatus.FAILED)));
+        when(logs.findBySourceEventId("evt-1")).thenReturn(Optional.of(row(20L, "evt-1", NotificationStatus.FAILED)));
         stubRender();
 
         listener.onContactReleased(event("evt-1"));
