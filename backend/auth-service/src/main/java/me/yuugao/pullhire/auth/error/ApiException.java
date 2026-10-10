@@ -26,7 +26,7 @@ public class ApiException extends RuntimeException {
         return code;
     }
 
-    public static ApiException unauthenticated(String message) {
+    public static ApiException unauthorized(String message) {
         return new ApiException(HttpStatus.UNAUTHORIZED, "unauthenticated", message);
     }
 
@@ -42,7 +42,7 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.CONFLICT, "conflict", message);
     }
 
-    public static ApiException validation(String message) {
+    public static ApiException badRequest(String message) {
         return new ApiException(HttpStatus.BAD_REQUEST, "validation_error", message);
     }
 }

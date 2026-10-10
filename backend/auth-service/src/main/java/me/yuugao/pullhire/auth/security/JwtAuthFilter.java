@@ -77,7 +77,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         } else if (!publicPath) {
             writeUnauthorized(response, request,
-                    ApiException.unauthenticated("Требуется заголовок Authorization: Bearer <JWT>"));
+                    ApiException.unauthorized("Требуется заголовок Authorization: Bearer <JWT>"));
             return;
         }
 

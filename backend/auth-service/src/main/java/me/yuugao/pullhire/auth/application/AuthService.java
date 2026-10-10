@@ -87,15 +87,15 @@ public class AuthService {
     @Transactional
     public User verifyEmail(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
-            throw ApiException.validation("token обязателен");
+            throw ApiException.badRequest("token обязателен");
         }
         EmailToken token = emailTokens.findByHash(TokenService.hashToken(rawToken))
-                .orElseThrow(() -> ApiException.validation("Токен подтверждения не найден"));
+                .orElseThrow(() -> ApiException.badRequest("Токен подтверждения не найден"));
         if (token.usedAt() != null) {
-            throw ApiException.validation("Токен уже использован");
+            throw ApiException.badRequest("Токен уже использован");
         }
         if (token.expiresAt().isBefore(Instant.now())) {
-            throw ApiException.validation("Срок действия токена истёк");
+            throw ApiException.badRequest("Срок действия токена истёк");
         }
 
         emailTokens.markUsed(token.id());
@@ -106,12 +106,12 @@ public class AuthService {
     /** Password login; only active, non-deleted accounts succeed, otherwise 401. */
     public TokenPair login(String email, String password) {
         User user = users.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> ApiException.unauthenticated("Неверный email или пароль"));
+                .orElseThrow(() -> ApiException.unauthorized("Неверный email или пароль"));
         if (user.deletedAt() != null || user.status() != UserStatus.ACTIVE) {
-            throw ApiException.unauthenticated("Неверный email или пароль");
+            throw ApiException.unauthorized("Неверный email или пароль");
         }
         if (!passwordEncoder.matches(password, user.passwordHash())) {
-            throw ApiException.unauthenticated("Неверный email или пароль");
+            throw ApiException.unauthorized("Неверный email или пароль");
         }
         return tokens.issueTokenPair(user);
     }
@@ -123,7 +123,7 @@ public class AuthService {
 
     private static String normalizeEmail(String email) {
         if (email == null) {
-            throw ApiException.validation("email обязателен");
+            throw ApiException.badRequest("email обязателен");
         }
         return email.trim().toLowerCase(Locale.ROOT);
     }

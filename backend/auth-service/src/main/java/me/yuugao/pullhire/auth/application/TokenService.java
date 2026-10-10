@@ -83,7 +83,7 @@ public class TokenService {
                     claims.getId(),
                     claims.getExpiration().toInstant());
         } catch (JwtException | IllegalArgumentException ex) {
-            throw ApiException.unauthenticated("Невалидный или истёкший токен");
+            throw ApiException.unauthorized("Невалидный или истёкший токен");
         }
     }
 
@@ -104,18 +104,18 @@ public class TokenService {
     /** Rotates a refresh token: revokes the consumed one and issues a new pair. */
     public TokenPair rotateRefreshToken(String rawRefresh) {
         if (rawRefresh == null || rawRefresh.isBlank()) {
-            throw ApiException.unauthenticated("refresh-токен обязателен");
+            throw ApiException.unauthorized("refresh-токен обязателен");
         }
         RefreshToken stored = refreshTokens.findByHash(hashToken(rawRefresh))
-                .orElseThrow(() -> ApiException.unauthenticated("refresh-токен не найден"));
+                .orElseThrow(() -> ApiException.unauthorized("refresh-токен не найден"));
         if (stored.revokedAt() != null || stored.expiresAt().isBefore(Instant.now())) {
-            throw ApiException.unauthenticated("refresh-токен отозван или истёк");
+            throw ApiException.unauthorized("refresh-токен отозван или истёк");
         }
         refreshTokens.revoke(stored.id());
         User user = users.findById(stored.userId())
-                .orElseThrow(() -> ApiException.unauthenticated("Пользователь не найден"));
+                .orElseThrow(() -> ApiException.unauthorized("Пользователь не найден"));
         if (user.deletedAt() != null || user.status() != UserStatus.ACTIVE) {
-            throw ApiException.unauthenticated("Учётная запись недоступна");
+            throw ApiException.unauthorized("Учётная запись недоступна");
         }
         return issueTokenPair(user);
     }
@@ -128,7 +128,7 @@ public class TokenService {
                 return Role.fromWire(String.valueOf(list.get(0)));
             }
         }
-        throw ApiException.unauthenticated("В токене отсутствует роль");
+        throw ApiException.unauthorized("В токене отсутствует роль");
     }
 
     public static String generateRawToken() {

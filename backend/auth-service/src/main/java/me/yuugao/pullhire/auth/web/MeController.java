@@ -23,7 +23,7 @@ public class MeController {
     public MeResponse me(HttpServletRequest request) {
         long userId = requireUserId(request);
         User user = users.findById(userId)
-                .orElseThrow(() -> ApiException.unauthenticated("Пользователь не найден"));
+                .orElseThrow(() -> ApiException.unauthorized("Пользователь не найден"));
         return MeResponse.from(user);
     }
 
@@ -33,6 +33,6 @@ public class MeController {
         if (value instanceof Long id) {
             return id;
         }
-        throw ApiException.unauthenticated("Требуется аутентификация");
+        throw ApiException.unauthorized("Требуется аутентификация");
     }
 }
