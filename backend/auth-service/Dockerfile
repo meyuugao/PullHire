@@ -17,6 +17,8 @@ COPY outreach-service/build.gradle.kts outreach-service/build.gradle.kts
 COPY notification-service/build.gradle.kts notification-service/build.gradle.kts
 COPY event-lib/build.gradle.kts event-lib/build.gradle.kts
 COPY event-lib/src event-lib/src
+COPY idempotency-lib/build.gradle.kts idempotency-lib/build.gradle.kts
+COPY idempotency-lib/src idempotency-lib/src
 COPY auth-service/src auth-service/src
 
 RUN chmod +x gradlew && ./gradlew :auth-service:bootJar --no-daemon

@@ -146,7 +146,7 @@ Browser SPA -> api-gateway (Nginx) -> {auth, candidate, fsp, assessment,
 
 - терминация TLS (демо - self-signed сертификат);
 - маршрутизация запросов к сервисам;
-- статический rate-limit;
+- статический rate-limit (тело ответа 429 формируется njs-скриптом, problem+json §2 api.md; сам rate-limit остаётся статическим);
 - сквозной заголовок `X-Request-Id`;
 - индекс документации `/docs` со ссылками на OpenAPI сервисов.
 

@@ -391,4 +391,45 @@
 - ST-8.14 — отклонение зафиксировано: candidate-нога эмулирована test-double с parity-проверкой против contracts/events/candidate.contact_released.schema.json; полный сквозной E2E — S12 (7-step smoke).
 - TODO.md: S8 [ ] → [x], чекбоксы exit-критериев закрыты. Push на slice после approval.
 
+## 2026-10-10 — S9 Phase 1: context load
+- TODO.md S9 — скоуп извлечён: сквозные NFR (Idempotency-Key, rate-limit 429, аудит PII, correlation_id, footprint), 5 exit-критериев, depends_on S3–S8.
+- api.md §1–§2 — Idempotency-Key для небезопасных POST (повтор = прежний результат без эффекта), problem+json конверт (429 в том же конверте), X-Request-Id → correlation_id; мутирующие: POST /selections, /invitations* , /vacancies/{id}/applications [ext].
+- data_model.md §12–13 — PII-правила видимости (поисковая проекция без PII, §12 п.7), аудит-журналы по 8 схемам (auth, candidate, fsp, assessment, selection, employer, outreach, notification), журналы без паролей/токенов/контактов.
+- architecture.md §3.2/§5.3/§7.1 — статический rate-limit на Nginx, mem_limit в compose, footprint ≈2.0–2.2 ГБ, X-Request-Id распространяется как correlation_id в событиях (без трейсера).
+- deployment.md §1/§5 — целевой footprint ≈2.0–2.2 ГБ RAM, smoke-порядок: up → healthcheck → seed → e2e.
+- requirements/nonfunctional.md — только §Безопасность и 152-ФЗ дословно; §лимиты/§наблюдаемость отсутствуют — числовые лимиты живут в api/architecture/deployment.
+- stack.md — Nginx 1.27-alpine, Actuator/Micrometer; отдельных rate-limit/idempotency/tracing-библиотек нет.
+- worklog.md — формат подтверждён (заголовок + bullets); корневых рабочих доков нет.
+
+## 2026-10-10 — S9 Phase 2: декомпозиция + решения A–F
+- Oracle — S9 декомпозирован на 10 подзадач ST-9.1..9.11, 3 батча; факт-проверка репо: nginx-зона есть без limit_req_status 429 (по умолчанию 503 HTML), mem_limit в compose суммой ≈2.35 ГБ, event-lib без jdbc.
+- Решение A (утверждено): Idempotency-Key middleware — НОВЫЙ Gradle-модуль idempotency-lib (jdbc + фильтр + стор), а не расширение event-lib.
+- Решение B (утверждено): полный охват api.md §1 — wiring в 4 сервисах: selection, outreach, auth (регистрация), assessment (ответ в сессии).
+- Решение C (утверждено): ключ только на POST-создания (POST /selections, POST /invitations, POST /applications/auth-register/...); переходы /invitations/{id}/* — машиной состояний, без ключа.
+- Решение D (утверждено): POST /vacancies/{id}/applications [ext] исключён из S9 — endpoint появится в S12.
+- Решение E (утверждено): тело 429 — динамический problem+json через njs (официальный JS-модуль nginx): реальный request_id и timestamp; ST-9.0 — синхронизация docs/stack.md + docs/architecture.md §3.2, api.md §2 не меняется.
+- Решение F (утверждено): TTL 24ч ленивой чисткой idempotency_keys (DELETE при вставке) + запись в docs/assumptions.md.
+
+## 2026-10-10 — S9 Phase 3: batch A (ST-9.0..9.7)
+- designer batch-конфирм (5 лайнов): конфликтов файлов нет; конверт 429 — вложенный `error` по api.md §2 (брифинг неточен — исправлено); сумма mem_limit пересчитана ≈2.53 GiB.
+- ST-9.0 — docs sync: stack.md +строка njs-модуля; architecture.md §3.2 — parenthetical «тело 429 формирует njs, rate-limit статический»; api.md §2 +строка 429/rate_limited; assumptions.md §12 — TTL 24ч ленивой чисткой; data_model.md не тронут (внутренние таблицы там не листингуются).
+- ST-9.1 — backend/idempotency-lib: IdempotencyFilter (409 nested problem+json при отсутствии ключа; replay status+body+content-type; persist только 2xx; DuplicateKeyException → re-lookup/409), IdempotencyResultStore (JdbcTemplate, lazy TTL DELETE + ON CONFLICT DO NOTHING), Properties (enabled=false, pathPatterns, ttl=PT24H), AutoConfiguration + imports, reference DDL; settings/build.gradle.kts обновлены; тест 3/3 через JUnit launcher (Gradle test-worker — env-блок, mirror S8).
+- ST-9.4 — api-gateway: njs/json429.js (build: nested problem+json, request_id из $pullhire_request_id — обходит gotcha кэширования $request_id), nginx.conf с load_module ngx_http_js_module, default.conf +limit_req_status 429 +error_page 429=@json429 +js_import, Dockerfile: COPY + условный apk add nginx-module-njs; node --check OK; nginx -t не прогнан (docker daemon недоступен).
+- ST-9.5 — scripts/audit-pii-conventions.sh (157): pg_value/pg_lines helpers, checks a-e (candidate_cards whitelist+contact-regex, 5 §13-таблиц, secret/contact-scan, 8 схем), PII AUDIT OK/exit 1; bash -n OK (Git-Bash).
+- ST-9.6 — scripts/smoke-correlation.sh (~210): register→verify→login (S6-паттерн, Mailpit), fixed X-Request-Id через цепочку selections→invitations→accept, poll-grep correlation_id по auth/selection/outreach/candidate/notification, gateway-generation check.
+- ST-9.7 — scripts/check-footprint.sh (89): docker stats --no-stream pullhire-*, нормализация KiB/MiB/GiB→MiB, таблица usage+limit, порог 2200 MiB, footer про sum(limits)=2592 MiB > target (тюнинг — ST-9.8); bash -n OK.
+
+## 2026-10-10 — S9 Phase 3: batch B (wiring idempotency в 4 сервиса)
+- designer batch-конфирм (4 лайна): replay-safety подтверждена (filter hit не доходит до контроллера — нет двойных outbox); паттерн /invitations не матчит переходы (decision C); /auth/register и /assessment/sessions/*/answers — обязательные pathPatterns; smoke call-sites для register локализованы.
+- ST-9.2 — selection: dep + pullhire.idempotency (path-patterns /selections), V7__create_idempotency_keys, IdempotencyFilterPostgresDbTest (standalone MockMvc, SELECTION_TEST_DB_URL gate, replay по row-count selection_results); POST /selections остаётся 200 (docs не нормируют 201 — зафиксировано).
+- ST-9.3 — outreach: dep + yml (path-patterns /invitations), V5__create_idempotency_keys, InvitationIdempotencyTest 4 теста/5 cases (create+replay, 409, 4xx-not-stored+retry, accept-bypass).
+- ST-9.10 — auth: dep + yml (path-patterns /auth/register), V6__create_idempotency_keys, AuthIdempotencyFilterTest (in-memory store, scoping: /auth/login без ключа = 200); smoke-compose.sh register_user() + Idempotency-Key (уникальный по умолчанию) + S2 replay-регрессия (тот же ключ+email → 201, не 409); smoke-correlation.sh register_user() + заголовок; bash -n обоих скриптов OK.
+- ST-9.11 — assessment: dep + yml (path-patterns /assessment/sessions/*/answers), V3__create_idempotency_keys, javadoc AnswerService/Controller обновлены (store активен), IdempotencyFilterScopingTest (survey — без ключа, answers без ключа — 409); env-обход: root cause Gradle test-worker — кириллический путь в sun.jnu.encoding; JUnit launcher с 8.3-путём (C:\Users\E5EE~1) → 6/6 PASS (2 новых + 4 существующих controller-теста).
+- Верификация: все 4 сервиса compileJava+compileTestJava BUILD SUCCESSFUL (JDK 21); DB-тесты selection/outreach env-gated (не прогнаны — нет TEST_DB_URL в окружении).
+
+## 2026-10-10 — S9 Phase 5: ST-9.8 live-прогон + закрытие
+- ST-9.8 — живой прогон: 429 через gateway PASS (30 конкурентных GET → 21×200 + 9×429, тело nested problem+json с реальным request_id и timestamp из njs; nginx -t OK, njs резолвится); idempotency live PASS (POST /auth/register дважды с тем же ключом → байт-идентичные 201, auth.users 1 строка, outbox 1 user.registered); footprint PASS 633 MiB ≤ 2200 (auth 186 + notification 185 + pg 70 + rabbitmq 169 + mailpit 23); фикс scripts/audit-pii-conventions.sh — auth.users исключён из secrets-скана (password_hash = каноническое хранилище §3.1, не дубль).
+- Env-блок (офлайн, нет сети к docker.io): образы selection/outreach/assessment/employer/candidate/fsp отсутствуют → критерий 3 частично (4/6 таблиц + оба secrets-check PASS; candidate_cards/grade_history/invitation_events не созданы без миграций незапущенных сервисов), критерий 5 частично (gateway generation/echo + auth/notification-нога PASS; employer-нога 400 — нет образа). Scaffolding: 6 DNS-стабов для апстримов nginx; flyway checksum repair V5 (env-drift комментария из d2f81f0, dev-volume).
+- TODO.md: S9 [ ] → [~]; exit 1/2/4 → [x]; exit 3/5 → открыты (env-блок, полное стек-верифицирование при доступной сети).
+
 

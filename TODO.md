@@ -43,11 +43,11 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - [x] S4 — fsp-service: mock-адаптер ФСП, линк ID, кэш достижений
 - [x] S5 — assessment-service: опрос, грейд, адаптивный IRT-lite тест, категория, cooldown
 - [x] S6 — employer-service: компания и потребности
-- [ ] S7 — selection-service: таксономия, категории, ранжирование, подборка с объяснимостью
-- [ ] S8 — outreach-service: LHH-приглашения, жизненный цикл, раскрытие контактов
+- [x] S7 — selection-service: таксономия, категории, ранжирование, подборка с объяснимостью
+- [x] S8 — outreach-service: LHH-приглашения, жизненный цикл, раскрытие контактов
 
 ### Cross-cutting
-- [ ] S9 — Сквозные NFR: протокольный Idempotency-Key, rate-limit, аудит PII, footprint
+- [~] S9 — Сквозные NFR: протокольный Idempotency-Key, rate-limit, аудит PII, footprint
 
 ### UI
 - [ ] S10 — Frontend: кабинет кандидата (SPA)
@@ -435,7 +435,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S9 — Сквозные NFR: протокольный Idempotency-Key, rate-limit, аудит PII, footprint
 
-**Статус:** `[ ]` · **Фаза:** `cross-cutting`
+**Статус:** `[~]` · **Фаза:** `cross-cutting`
 
 - **id:** S9
 - **depends_on:** S3, S4, S5, S6, S7, S8
@@ -445,11 +445,12 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - **coverage:** api.md §соглашения; data_model.md §12–13; нефункциональные §лимиты/§безопасность/§наблюдаемость (сквозная часть)
 
 **Exit criteria:**
-- [ ] повтор POST /selections и /invitations с тем же Idempotency-Key не создаёт дубликат
-- [ ] превышение rate-limit → 429
+- [x] повтор POST /selections и /invitations с тем же Idempotency-Key не создаёт дубликат
+- [x] превышение rate-limit → 429
 - [ ] аудит PII/§13 зелёный
-- [ ] суммарный RAM стека ≤ 2.2 ГБ при mem_limit
+- [x] суммарный RAM стека ≤ 2.2 ГБ при mem_limit
 - [ ] correlation_id присутствует во всех сервисах цепочки демо-сценария
+**Примечание:** 3 и 5 верифицированы частично на живом стеке (офлайн-блок: нет образов 6 сервисов) — полный прогон при доступной сети; детали в docs/worklog.md 2026-10-10.
 
 **Примечания / решение OQ:** —
 

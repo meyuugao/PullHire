@@ -4,8 +4,11 @@
 FROM nginx:1.27-alpine
 
 RUN apk add --no-cache openssl
+RUN if [ ! -f /usr/lib/nginx/modules/ngx_http_js_module.so ]; then apk add --no-cache nginx-module-njs; fi
 
 COPY conf.d/default.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY njs/json429.js /etc/nginx/njs/json429.js
 COPY entrypoint.d/10-generate-cert.sh /docker-entrypoint.d/10-generate-cert.sh
 RUN chmod +x /docker-entrypoint.d/10-generate-cert.sh
 

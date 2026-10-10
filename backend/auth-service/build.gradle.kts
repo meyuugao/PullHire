@@ -8,6 +8,10 @@ dependencies {
     // consumer retry/DLQ. Replaces the S1 direct RabbitTemplate publish.
     implementation(project(":event-lib"))
 
+    // Idempotency-Key middleware for POST /auth/register (docs/api.md §1–§2,
+    // decision B): replay-safe registration; 409 problem+json when the key is missing.
+    implementation(project(":idempotency-lib"))
+
     // Persistence: JdbcTemplate + Flyway (docs/data_model.md §1, per-schema migrations).
     // Boot 4 ships Flyway autoconfiguration in spring-boot-starter-flyway (not in flyway-core alone).
     implementation("org.springframework.boot:spring-boot-starter-jdbc")

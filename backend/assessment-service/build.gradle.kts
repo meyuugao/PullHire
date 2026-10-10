@@ -4,6 +4,8 @@
 dependencies {
     // Shared event mechanics (S2): transactional outbox + envelope.
     implementation(project(":event-lib"))
+    // Idempotency-Key middleware (S9, docs/api.md §1): persistent filter for answers.
+    implementation(project(":idempotency-lib"))
 
     // Persistence: JdbcTemplate + Flyway (docs/data_model.md §1, per-schema migrations).
     // Boot 4 ships Flyway autoconfiguration in spring-boot-starter-flyway (not in flyway-core alone).

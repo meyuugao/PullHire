@@ -40,6 +40,12 @@ app:
 pullhire:
   outbox:
     enabled: true
+  # Idempotency-Key middleware (docs/api.md §1–§2, decisions B/F): only
+  # POST /auth/register requires the key. /auth/login, /auth/refresh,
+  # /auth/verify-email and /consents* stay key-less (decision B scoping).
+  idempotency:
+    enabled: true
+    path-patterns: [ "/auth/register" ]
 
 management:
   # Observability (S2, docs/architecture.md §7.1): expose ONLY Prometheus

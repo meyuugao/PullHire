@@ -38,13 +38,14 @@ subprojects {
     }
 }
 
-// event-lib is a plain shared library: keep the ordinary `jar`, no executable
-// Spring Boot fat jar. It still inherits the BOM + Java 21 toolchain above.
-project(":event-lib") {
-    tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+// event-lib and idempotency-lib are plain shared libraries: keep the ordinary
+// `jar`, no executable Spring Boot fat jar. They still inherit the BOM + Java 21
+// toolchain above.
+listOf(project(":event-lib"), project(":idempotency-lib")).forEach { lib ->
+    lib.tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
         enabled = false
     }
-    tasks.named<Jar>("jar") {
+    lib.tasks.named<Jar>("jar") {
         enabled = true
     }
 }

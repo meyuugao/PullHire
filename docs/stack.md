@@ -45,6 +45,7 @@
 | Инфра | PostgreSQL | 16 | PostgreSQL License |
 | Инфра | RabbitMQ | 3.13 | MPL-2.0 |
 | Инфра | Nginx | 1.27 | BSD-2-Clause |
+| Инфра | Nginx njs module (ngx_http_js_module) | ships with nginx 1.27 / njs 0.8.x | BSD-2-Clause |
 | Инфра | Mailpit (dev) | 1.20 | MIT |
 
 Версии backend-библиотек, помеченные «из BOM Boot», управляются

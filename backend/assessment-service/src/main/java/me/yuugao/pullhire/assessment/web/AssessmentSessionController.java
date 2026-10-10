@@ -37,10 +37,11 @@ public class AssessmentSessionController {
 
     /**
      * Grades one served item and returns the next item or the completion
-     * outcome. The {@code Idempotency-Key} header is accepted per
-     * {@code docs/api.md §1}; a durable key store is deferred (S9 zone) —
-     * re-posting an already-answered item is already a no-op returning the
-     * current progress (see {@code AnswerService}).
+     * outcome. The {@code Idempotency-Key} header is enforced per
+     * {@code docs/api.md §1} by the idempotency-lib filter with the persistent
+     * {@code idempotency_keys} store (S9) — re-posting an already-answered item
+     * is additionally a no-op returning the current progress (see
+     * {@code AnswerService}).
      */
     @PostMapping("/assessment/sessions/{id}/answers")
     public AnswerResponse answer(@PathVariable long id,

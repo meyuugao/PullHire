@@ -62,10 +62,11 @@ import tools.jackson.databind.json.JsonMapper;
  * borderline estimate to manual review, {@code §6.3}).
  *
  * <p>Idempotency ({@code docs/api.md §1}): the {@code Idempotency-Key} header
- * is accepted on the controller but a dedicated key store is deferred (S9
- * zone). Within the session the POST is naturally replay-safe — re-posting an
- * answer for an already-answered item performs no repeated effect and returns
- * the current progress instead of a 409.
+ * is enforced by the idempotency-lib filter backed by the persistent
+ * {@code idempotency_keys} store (S9). Within the session the POST is
+ * additionally replay-safe — re-posting an answer for an already-answered
+ * item performs no repeated effect and returns the current progress instead
+ * of a 409.
  *
  * <p>Anti-leak ({@code docs/testing_model.md §9.1}): the response carries the
  * same presentation-only surface as {@code SessionStartResponse} — the item

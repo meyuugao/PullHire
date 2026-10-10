@@ -39,11 +39,12 @@ pg_value() { # sql -> single trimmed scalar
   docker compose exec -T postgres psql -U "$PG_USER" -d "$PG_DB" -tAc "$1" 2>/dev/null | tr -d '\r[:space:]'
 }
 
-register_user() { # email corr [role] -> HTTP status code
-  local email="$1" corr="$2" role="${3:-candidate}" body
+register_user() { # email corr [role] [idempotency-key] -> HTTP status code
+  local email="$1" corr="$2" role="${3:-candidate}" idem="${4:-smoke-$(date +%s%N)-$$}" body
   body="$(printf '{"email":"%s","password":"Sm0ke-Test-1","role":"%s"}' "$email" "$role")"
   curl -k -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth/register" \
-    -H 'Content-Type: application/json' -H "X-Request-Id: $corr" -d "$body" || true
+    -H 'Content-Type: application/json' -H "X-Request-Id: $corr" \
+    -H "Idempotency-Key: $idem" -d "$body" || true
 }
 
 fetch_verify_token() { # email -> raw verification token (empty when not yet delivered)
@@ -133,12 +134,21 @@ notification_effect() { # email -> count
 echo "==> S2 real user.registered flow via gateway"
 CORR_ID="smoke-$(date +%s)-$$"
 REG_EMAIL="smoke.${CORR_ID}@pullhire.local"
-reg_code="$(register_user "$REG_EMAIL" "$CORR_ID")"
+REG_IDEM="smoke-${CORR_ID}-register"
+reg_code="$(register_user "$REG_EMAIL" "$CORR_ID" "candidate" "$REG_IDEM")"
 if [ "$reg_code" != "201" ]; then
   echo "FAIL: POST /auth/register returned ${reg_code} (expected 201) for ${REG_EMAIL}"
   exit 1
 fi
 echo "  POST /auth/register -> 201 for ${REG_EMAIL} (X-Request-Id: ${CORR_ID})"
+
+echo "==> S2 Idempotency-Key replay on POST /auth/register (same key + same email)"
+replay_code="$(register_user "$REG_EMAIL" "$CORR_ID" "candidate" "$REG_IDEM")"
+if [ "$replay_code" != "201" ]; then
+  echo "FAIL: POST /auth/register replay with same Idempotency-Key returned ${replay_code} (expected 201 replay, not 409)"
+  exit 1
+fi
+echo "  POST /auth/register replay with same Idempotency-Key -> 201 (idempotent)"
 
 if [ "$have_psql" != "1" ] && ! curl -fsS "$MAILPIT_API" >/dev/null 2>&1; then
   echo "  SKIP notification effect: psql and Mailpit API both unavailable"

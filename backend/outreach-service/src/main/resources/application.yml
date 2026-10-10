@@ -44,6 +44,12 @@ app:
 pullhire:
   outbox:
     enabled: true
+  # Idempotency-Key creation guard (docs/api.md §1, decision C): required on
+  # POST /invitations only; transitions stay key-less.
+  idempotency:
+    enabled: true
+    path-patterns:
+      - /invitations
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus

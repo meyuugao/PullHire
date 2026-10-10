@@ -39,6 +39,15 @@ app:
       unconfirmed-grade-penalty: ${SELECTION_RANK_UNCONFIRMED_PENALTY:100.0} # illustrative, OQ-1
       top-n: ${SELECTION_RANK_TOP_N:20}                                    # illustrative, OQ-1
 
+# Idempotency-Key middleware for POST /selections (docs/api.md §1,
+# assumptions.md §12): requires Idempotency-Key header, replays stored 2xx
+# results on repeats. TTL defaults to PT24H in idempotency-lib.
+pullhire:
+  idempotency:
+    enabled: true
+    path-patterns:
+      - /selections
+
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus
   # metrics, at the literal path /metrics. Base-path `/` + path-mapping keeps

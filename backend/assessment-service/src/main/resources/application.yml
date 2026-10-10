@@ -66,6 +66,12 @@ app:
 pullhire:
   outbox:
     enabled: true
+  # Idempotency-Key enforcement (S9, docs/api.md §1, decision B: answers only;
+  # /survey, /grade-choice and /sessions/{id}/start stay key-less).
+  idempotency:
+    enabled: true
+    path-patterns:
+      - "/assessment/sessions/*/answers"
 
 management:
   # Observability (docs/architecture.md §7.1): expose ONLY Prometheus

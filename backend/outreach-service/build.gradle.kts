@@ -8,6 +8,10 @@ dependencies {
     // publishes invitation events via the outbox relay.
     implementation(project(":event-lib"))
 
+    // Idempotency-Key creation guard (docs/api.md §1, decision C): POST /invitations
+    // replays stored 2xx results via the shared idempotency-lib filter.
+    implementation(project(":idempotency-lib"))
+
     // Persistence: JdbcTemplate + Flyway (docs/data_model.md §1, per-schema migrations).
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
