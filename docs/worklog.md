@@ -497,3 +497,6 @@
 ## 2026-10-11 Ч S10 Phase 5 (push)
 - —делано: commit 33385cb на slice (45 файлов), push origin slice, pull Ч up-to-date, working tree clean.
 - ќткрыто: браузерный acceptance-проход пользовател€; S12 seed дл€ приглашений.
+- 2026-10-11: deploy E2E verified locally (compose up OK, 8 services healthy, smoke: manual gateway 200)
+- 2026-10-11: README.md authored (11 sections per RoboMatch layout, claims traced to docs/code/deploy evidence)
+- 2026-10-11: smoke-compose.sh PASS on live stack (review finding D1 closed)
