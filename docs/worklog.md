@@ -493,3 +493,7 @@
 ## 2026-10-11 Ч S10 Phase 4 реверификаци€
 - Oracle: APPROVE S10 for user acceptance review Ч 4/4 фикса подтверждены (цепочка session_id закрыта на каждом шаге, tsc exit 0, tsbuildinfo игнорируетс€).
 - ќсталось: браузерный acceptance-проход (клик-сквозь, тайминг событий category_assigned/contact_released).
+
+## 2026-10-11 Ч S10 Phase 5 (push)
+- —делано: commit 33385cb на slice (45 файлов), push origin slice, pull Ч up-to-date, working tree clean.
+- ќткрыто: браузерный acceptance-проход пользовател€; S12 seed дл€ приглашений.
