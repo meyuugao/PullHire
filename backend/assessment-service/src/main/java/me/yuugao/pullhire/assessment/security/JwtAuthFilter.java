@@ -2,6 +2,8 @@ package me.yuugao.pullhire.assessment.security;
 
 import me.yuugao.pullhire.assessment.web.ApiVersionFilter;
 import me.yuugao.pullhire.assessment.web.ErrorEnvelope;
+import me.yuugao.pullhire.assessment.application.CandidateProfileClient;
+import me.yuugao.pullhire.assessment.error.ApiException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
@@ -32,7 +34,13 @@ import java.util.Map;
  * {@code unauthenticated}. Health/JWKS/docs paths and {@code /internal/} are
  * exempt (network trust; the gateway does not route {@code /internal}). Requests
  * under {@code /assessment} require the {@code candidate} role in any realm role
- * (F11), else 403 {@code forbidden}.
+ * (F11), else 403 {@code forbidden}. For those requests the JWT {@code sub}
+ * ({@code auth.users.id}) is additionally resolved to the logical candidate id
+ * ({@code candidate.profiles.id}) via {@link CandidateProfileClient}, because
+ * every {@code candidate_id} column is a logical reference to
+ * {@code candidate.profiles.id} ({@code docs/data_model.md §1},
+ * {@code contracts/events/*.schema.json}); a missing profile is 403, a
+ * resolution failure is 500.
  */
 @Component
 @Order(2)
@@ -60,10 +68,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwksKeyProvider keys;
     private final JsonMapper jsonMapper;
+    private final CandidateProfileClient profiles;
 
-    public JwtAuthFilter(JwksKeyProvider keys, JsonMapper jsonMapper) {
+    public JwtAuthFilter(JwksKeyProvider keys, JsonMapper jsonMapper, CandidateProfileClient profiles) {
         this.keys = keys;
         this.jsonMapper = jsonMapper;
+        this.profiles = profiles;
     }
 
     @Override
@@ -82,7 +92,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     writeForbidden(response, request, "Требуется роль candidate");
                     return;
                 }
-                request.setAttribute(ATTR_USER_ID, Long.parseLong(claims.getSubject()));
+                long userId = Long.parseLong(claims.getSubject());
+                if (path.startsWith(CANDIDATE_PREFIX) && roles.contains(CANDIDATE_ROLE)) {
+                    try {
+                        userId = profiles.resolveProfileId(userId);
+                    } catch (ApiException ex) {
+                        writeForbidden(response, request, ex.getMessage());
+                        return;
+                    } catch (IllegalStateException ex) {
+                        writeProblem(response, request, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                                "internal_error", "Не удалось разрешить профиль кандидата");
+                        return;
+                    }
+                }
+                request.setAttribute(ATTR_USER_ID, userId);
                 request.setAttribute(ATTR_ROLE, roles.isEmpty() ? null : roles.get(0));
             } catch (JwtException | IllegalArgumentException | IllegalStateException ex) {
                 if (!publicPath) {

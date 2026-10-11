@@ -7,6 +7,8 @@ import me.yuugao.pullhire.assessment.error.ApiException;
 import me.yuugao.pullhire.assessment.repo.ItemBankRepository;
 import me.yuugao.pullhire.assessment.repo.TestSessionRepository;
 import me.yuugao.pullhire.assessment.web.dto.SurveyRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -29,7 +31,8 @@ import java.util.Objects;
  * choice, start).
  *
  * <p>No {@code candidate}-schema write happens here: {@code candidate_id} is the
- * logical id from the JWT (no cross-schema FK, {@code docs/data_model.md §1}).
+ * logical candidate id ({@code candidate.profiles.id}) resolved from the JWT
+ * by {@code JwtAuthFilter} (no cross-schema FK, {@code docs/data_model.md §1}).
  *
  * <p>Owner-side taxonomy validation ({@code docs/data_model.md §1}): the
  * owning service validates codes against the seeded taxonomy, so unknown
@@ -45,6 +48,8 @@ import java.util.Objects;
 public class SurveyService {
 
     private static final JsonMapper JSON = new JsonMapper();
+
+    private static final Logger log = LoggerFactory.getLogger(SurveyService.class);
 
     private final TestSessionRepository sessions;
     private final ItemBankRepository itemBank;
@@ -87,7 +92,10 @@ public class SurveyService {
                 0,
                 null,
                 null);
-        return sessions.create(session);
+        long sessionId = sessions.create(session);
+        // Success marker for the chain: MDC correlation_id comes from CorrelationMdcFilter.
+        log.info("Опрос принят, сессия открыта: session_id={}", sessionId);
+        return sessionId;
     }
 
     private void validateTaxonomy(String specialization, String grade, List<String> declared) {

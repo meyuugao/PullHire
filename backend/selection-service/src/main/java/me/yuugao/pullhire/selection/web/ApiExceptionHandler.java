@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -18,6 +20,8 @@ import java.util.List;
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorEnvelope> handleApi(ApiException ex, HttpServletRequest request) {
@@ -44,6 +48,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorEnvelope> handleGeneric(Exception ex, HttpServletRequest request) {
+        log.error("Unhandled exception for {} {}", request.getMethod(), request.getRequestURI(), ex);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error",
                 "Внутренняя ошибка сервиса", null, request);
     }

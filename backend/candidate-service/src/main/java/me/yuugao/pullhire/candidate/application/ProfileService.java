@@ -4,6 +4,8 @@ import me.yuugao.pullhire.candidate.domain.Profile;
 import me.yuugao.pullhire.candidate.domain.ProfileCommand;
 import me.yuugao.pullhire.candidate.error.ApiException;
 import me.yuugao.pullhire.candidate.repo.ProfileRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,8 @@ import java.util.Optional;
  */
 @Service
 public class ProfileService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProfileService.class);
 
     private static final String PUBLISHED = "published";
 
@@ -60,6 +64,9 @@ public class ProfileService {
 
         long profileId = profiles.upsertByUserId(toSave);
         cards.rebuild(profileId);
+        // Success marker for the chain: MDC correlation_id comes from CorrelationMdcFilter.
+        // Ids only, never profile content (PII).
+        log.info("Профиль обновлён: profile_id={}", profileId);
         return profiles.findById(profileId).orElse(toSave);
     }
 

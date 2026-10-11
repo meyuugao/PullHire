@@ -26,6 +26,7 @@ import me.yuugao.pullhire.assessment.repo.ItemBankRepository;
 import me.yuugao.pullhire.assessment.repo.TestSessionRepository;
 import me.yuugao.pullhire.assessment.web.dto.AnswerRequest;
 import me.yuugao.pullhire.assessment.web.dto.AnswerResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
@@ -88,6 +89,7 @@ public class AnswerService {
     private final GradeHistoryRepository gradeHistory;
     private final ProctoringService proctoring;
 
+    @Autowired
     public AnswerService(TestSessionRepository sessions, ItemBankRepository items,
                          AttemptRepository attempts, CategoryAssignmentService categories,
                          AssessmentProperties properties,

@@ -16,6 +16,8 @@ import me.yuugao.pullhire.selection.web.dto.SelectionRequest;
 import me.yuugao.pullhire.selection.web.dto.SelectionResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
@@ -40,6 +42,8 @@ import java.util.Set;
 public class SelectionService {
 
     private static final JsonMapper JSON = new JsonMapper();
+
+    private static final Logger log = LoggerFactory.getLogger(SelectionService.class);
 
     /**
      * Internal page size for draining the full category pool from
@@ -139,6 +143,8 @@ public class SelectionService {
                 JSON.writeValueAsString(request),
                 JSON.writeValueAsString(recommended),
                 JSON.writeValueAsString(items));
+        // Success marker for the chain: MDC correlation_id comes from CorrelationMdcFilter.
+        log.info("Подборка сформирована: selection_id={}", saved.id());
         return new SelectionResponse(
                 saved.id(), parentSelectionId, saved.createdAt(), request, recommended, items);
     }

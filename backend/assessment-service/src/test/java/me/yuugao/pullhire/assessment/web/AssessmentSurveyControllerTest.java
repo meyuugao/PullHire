@@ -1,5 +1,6 @@
 package me.yuugao.pullhire.assessment.web;
 
+import me.yuugao.pullhire.assessment.application.CandidateProfileClient;
 import me.yuugao.pullhire.assessment.application.SurveyService;
 import me.yuugao.pullhire.assessment.error.ApiException;
 import me.yuugao.pullhire.assessment.security.JwksKeyProvider;
@@ -55,8 +56,11 @@ class AssessmentSurveyControllerTest {
         JwksKeyProvider keys = mock(JwksKeyProvider.class);
         when(keys.publicKey(any())).thenReturn((RSAPublicKey) keyPair.getPublic());
 
+        CandidateProfileClient profiles = mock(CandidateProfileClient.class);
+        when(profiles.resolveProfileId(1L)).thenReturn(1L);
+
         mockMvc = MockMvcBuilders.standaloneSetup(new AssessmentSurveyController(surveys))
-                .addFilters(new JwtAuthFilter(keys, new JsonMapper()))
+                .addFilters(new JwtAuthFilter(keys, new JsonMapper(), profiles))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

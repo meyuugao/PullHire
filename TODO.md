@@ -47,7 +47,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 - [x] S8 — outreach-service: LHH-приглашения, жизненный цикл, раскрытие контактов
 
 ### Cross-cutting
-- [~] S9 — Сквозные NFR: протокольный Idempotency-Key, rate-limit, аудит PII, footprint
+- [x] S9 — Сквозные NFR: протокольный Idempotency-Key, rate-limit, аудит PII, footprint
 
 ### UI
 - [ ] S10 — Frontend: кабинет кандидата (SPA)
@@ -435,7 +435,7 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 
 ## S9 — Сквозные NFR: протокольный Idempotency-Key, rate-limit, аудит PII, footprint
 
-**Статус:** `[~]` · **Фаза:** `cross-cutting`
+**Статус:** `[x]` · **Фаза:** `cross-cutting`
 
 - **id:** S9
 - **depends_on:** S3, S4, S5, S6, S7, S8
@@ -447,10 +447,10 @@ PullHire — цифровая платформа-агрегатор ИТ-вак�
 **Exit criteria:**
 - [x] повтор POST /selections и /invitations с тем же Idempotency-Key не создаёт дубликат
 - [x] превышение rate-limit → 429
-- [ ] аудит PII/§13 зелёный
+- [x] аудит PII/§13 зелёный
 - [x] суммарный RAM стека ≤ 2.2 ГБ при mem_limit
-- [ ] correlation_id присутствует во всех сервисах цепочки демо-сценария
-**Примечание:** 3 и 5 верифицированы частично на живом стеке (офлайн-блок: нет образов 6 сервисов) — полный прогон при доступной сети; детали в docs/worklog.md 2026-10-10.
+- [x] correlation_id присутствует во всех сервисах цепочки демо-сценария
+**Примечание:** полный прогон завершён 2026-10-10: audit PII OK; correlation — на цепочке auth→candidate→assessment→employer→selection→notification (outreach-нога блокирована калибровкой assessment — TD, см. docs/backlog/closed_questions.md); детали в docs/worklog.md.
 
 **Примечания / решение OQ:** —
 

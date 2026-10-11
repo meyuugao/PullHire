@@ -35,6 +35,10 @@ auth:
 # illustrative placeholders, all overridable via app.assessment.* / env. Cooldown
 # = 1 month is a decided value (Q-3, docs/assumptions.md §2).
 app:
+  # JWT sub → candidate profile resolution (docs/data_model.md §1: candidate_id
+  # is a logical reference to candidate.profiles.id).
+  candidate:
+    url: ${CANDIDATE_SERVICE_URL:http://candidate-service:8080}
   assessment:
     se-threshold: ${ASSESSMENT_SE_THRESHOLD:0.3}          # illustrative, OQ-1
     ci-confidence: ${ASSESSMENT_CI_CONFIDENCE:1.96}       # z for §6.3 CI; illustrative, OQ-1

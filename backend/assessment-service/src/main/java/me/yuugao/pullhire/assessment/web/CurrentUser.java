@@ -10,7 +10,7 @@ public final class CurrentUser {
     private CurrentUser() {
     }
 
-    /** User id from the JWT filter; 401 when the request was not authenticated. */
+    /** Logical candidate id ({@code candidate.profiles.id}) from the JWT filter; 401 when the request was not authenticated. */
     public static long id(HttpServletRequest request) {
         Object value = request.getAttribute(JwtAuthFilter.ATTR_USER_ID);
         if (value instanceof Long id) {

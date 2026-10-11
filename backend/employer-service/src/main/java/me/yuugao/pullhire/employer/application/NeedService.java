@@ -6,6 +6,8 @@ import me.yuugao.pullhire.employer.domain.NeedCommand;
 import me.yuugao.pullhire.employer.error.ApiException;
 import me.yuugao.pullhire.employer.repo.CompanyRepository;
 import me.yuugao.pullhire.employer.repo.NeedRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,8 @@ import java.util.Set;
  */
 @Service
 public class NeedService {
+
+    private static final Logger log = LoggerFactory.getLogger(NeedService.class);
 
     private static final Set<String> STATUSES = Set.of("active", "archived");
 
@@ -58,7 +62,10 @@ public class NeedService {
         Company company = requireCompany(userId);
         NeedCommand effective = withStatusDefault(command, "active");
         validate(effective);
-        return needs.insert(company.id(), trim(effective));
+        Need need = needs.insert(company.id(), trim(effective));
+        // Success marker for the chain: MDC correlation_id comes from CorrelationMdcFilter.
+        log.info("Потребность создана: need_id={}", need.id());
+        return need;
     }
 
     /** Paged list of the caller's own company needs plus the total count. */

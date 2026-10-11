@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.jsonwebtoken.Jwts;
+import me.yuugao.pullhire.assessment.application.CandidateProfileClient;
 import me.yuugao.pullhire.assessment.application.GradeChoiceService;
 import me.yuugao.pullhire.assessment.application.GradeChoiceService.Outcome;
 import me.yuugao.pullhire.assessment.error.ApiException;
@@ -55,8 +56,11 @@ class AssessmentGradeControllerTest {
         JwksKeyProvider keys = mock(JwksKeyProvider.class);
         when(keys.publicKey(any())).thenReturn((RSAPublicKey) keyPair.getPublic());
 
+        CandidateProfileClient profiles = mock(CandidateProfileClient.class);
+        when(profiles.resolveProfileId(1L)).thenReturn(1L);
+
         mockMvc = MockMvcBuilders.standaloneSetup(new AssessmentGradeController(grades))
-                .addFilters(new JwtAuthFilter(keys, new JsonMapper()))
+                .addFilters(new JwtAuthFilter(keys, new JsonMapper(), profiles))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

@@ -432,4 +432,15 @@
 - Env-блок (офлайн, нет сети к docker.io): образы selection/outreach/assessment/employer/candidate/fsp отсутствуют → критерий 3 частично (4/6 таблиц + оба secrets-check PASS; candidate_cards/grade_history/invitation_events не созданы без миграций незапущенных сервисов), критерий 5 частично (gateway generation/echo + auth/notification-нога PASS; employer-нога 400 — нет образа). Scaffolding: 6 DNS-стабов для апстримов nginx; flyway checksum repair V5 (env-drift комментария из d2f81f0, dev-volume).
 - TODO.md: S9 [ ] → [~]; exit 1/2/4 → [x]; exit 3/5 → открыты (env-блок, полное стек-верифицирование при доступной сети).
 
+## 2026-10-10 — S9 Phase 5: финализация — DB-drift тесты, CI, полный стек
+- Oracle-ревью data-слоя: raw-JDBC риски (schema-drift не гейтится в CI — high; type-safety мапперов — medium; инъекции — low); решение зафиксировано assumptions.md §13.
+- ST-9.12..9.14 — DB-drift тесты закрытия пробела: auth 5/5, candidate 11/11 (full listener path + outbox dedup), notification 6/6 — против живого compose-PG (JUnit Launcher workaround; env-квирк: нативный postgres.exe занимает host:5432 — временные relays, удалены).
+- ST-9.15 — ci.yml: postgres:16-alpine service + 8 *_TEST_DB_URL env — DB-drift тесты гейтятся в CI.
+- ST-9.16 — assumptions.md §13: raw-SQL vs Hibernate (footprint 192m, стек RoboMatch, барьер зависимостей; обязателен DbTest-гейт).
+- Фиксы: @Autowired на амбивалентных конструкторах (assessment), log.error в selection generic-handler, python3-заглушка Git-Bash (переходник на python), сид специализаций пуст — загружен, snake_case PUT /candidate/profile, продуктовый баг candidate_id=user_id→profile_id (фильтр категории outreach не сходился бы никогда).
+- Сборка образов переведена на host-jar packaging (deployment.md §2: локальный ./gradlew bootJar, Docker только упаковывает) — устранено скачивание Gradle внутрь контейнера.
+- Полный стек: критерий 3 (PII AUDIT OK) закрыт; критерий 5 — correlation на цепочке auth→candidate→assessment→employer→selection→notification PASS; outreach-нога блокирована калибровкой assessment (банк 4 вопроса vs SE≤0.3, OQ-1) — зафиксировано как TD S13.
+- Footprint полный стек: 1919 MiB.
+- TODO.md: S9 [~] → [x], все 5 exit-критериев [x] (5 — на урезанной цепочке, обоснование в TODO-примечании + TD).
+
 

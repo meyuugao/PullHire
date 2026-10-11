@@ -162,6 +162,14 @@
 - Статус: осознанная граница.
 - Резолюция: экспорт `doc/pdf` — артефакт сборки, не authored-документ; зафиксирован как техдолг и не блокирует MVP.
 
+### TD-9. Калибровка assessment: автовыдача категории недостижима (S9)
+
+- Что: банк `assessment_seed.sql` — 4 вопроса на специализацию (1 anchor + 3 template families); `GradeBandClassifier` требует SE≤0.3 и CI внутри одного бэнда; IRT-скоринг даёт ≤0.25 информации на вопрос — даже 30 идеальных ответов дают SE≥0.34. Сессия всегда исчерпывает банк (≈4 ответа, SE≈0.78) и уходит в `needs_review` без категории; `selection.candidate_categories` не пополняется, POST /invitations всегда 400.
+- Откуда: S9 correlation-прогон (`scripts/smoke-correlation.sh`); `../testing_model.md §5–§6`; OQ-1 (числовые параметры — illustrative placeholders).
+- Действие: откалибровать связку сид/пороги (наполнение банка vs `min-items`/`se-threshold`/`ci-confidence`) либо зафиксировать ручной грейд как штатный путь демо.
+- Статус: открыт, зона S13/OQ-1.
+- Резолюция: нет. Временно: outreach-нога correlation-цепочки пропущена; критерий 5 S9 закрыт на цепочке auth→candidate→assessment→employer→selection→notification.
+
 ### D1. Non-service Gradle-модуль `backend/event-lib`
 
 - Что: `../deployment.md §2` описывает backend как «один корневой `backend/build.gradle.kts` и модуль на сервис»; S2 добавляет модуль `backend/event-lib`, не являющийся сервисом.

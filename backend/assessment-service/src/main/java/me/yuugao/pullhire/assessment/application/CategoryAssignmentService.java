@@ -19,6 +19,7 @@ import me.yuugao.pullhire.assessment.repo.CooldownRepository;
 import me.yuugao.pullhire.assessment.repo.GradeHistoryRepository;
 import me.yuugao.pullhire.assessment.repo.GradeHistoryRepository.GradeHistoryEntry;
 import me.yuugao.pullhire.assessment.repo.TestSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +57,7 @@ public class CategoryAssignmentService {
     private final AssessmentProperties properties;
     private final GradeEligibilityService eligibility;
 
+    @Autowired
     public CategoryAssignmentService(TestSessionRepository sessions,
                                      GradeHistoryRepository gradeHistory,
                                      CooldownRepository cooldowns,
