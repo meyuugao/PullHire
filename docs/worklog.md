@@ -444,3 +444,52 @@
 - TODO.md: S9 [~] в†’ [x], РІСЃРµ 5 exit-РєСЂРёС‚РµСЂРёРµРІ [x] (5 вЂ” РЅР° СѓСЂРµР·Р°РЅРЅРѕР№ С†РµРїРѕС‡РєРµ, РѕР±РѕСЃРЅРѕРІР°РЅРёРµ РІ TODO-РїСЂРёРјРµС‡Р°РЅРёРё + TD).
 
 
+
+## 2026-10-11 — S10 Phase 1 (scope)
+- Сделано: извлечён scope S10 (кабинет кандидата SPA), gate зависимостей S1/S3/S4/S5/S8 закрыт.
+- Источники: TODO.md:459-477; stack.md §3; user_flow.md §1-2; requirements/roles.md; api.md §coverage.
+- Статус S3/S4/S5 обновлены на [x] по указанию владельца.
+
+## 2026-10-11 — S10 Phase 2 (decomposition)
+- Сделано: S10 декомпозирован на ST-1..ST-17; план батчей: B0=ST-1/ST-2/ST-17, B1=13 экранов параллельно, B2=ST-16 интеграция.
+- Открыто: docs/examples/openapi/ пуст — генерация TS-клиентов (ST-2) заблокирована до появления спецификаций.
+
+## 2026-10-11 — S10 Phase 3, Batch 0
+- ST-17: exit criteria S10 детализированы под-чекбоксами по экранам (TODO.md, +19).
+- ST-1: shell/session/guards — layout.tsx, page.tsx, lib/auth.ts, lib/api.ts, components/nav.ts, components/shell.tsx (+575), guards client-side (output: export).
+- ST-2: 6 baseline-спецификаций сняты с живого шлюза, openapi-typescript v7, generate:clients, сгенерированные schema.d.ts, CI job client-regen (+4661).
+- Открыто: верификация oracle по Batch 0 перед Batch 1.
+
+## 2026-10-11 — S10 Batch 0 верификация + фиксы
+- Oracle: FIX REQUIRED — 1 blocker (нет package-lock.json), 1 major (auth.ts обходил api.ts), 2 minor.
+- Fixer: lockfile создан, refresh через apiFetch(anonymous), README уточнён (docs/architecture.md §4); generate:clients идемпотентен, tsc exit 0.
+- S3/S4/S5 статусы — намеренное действие Phase 0, подтверждено владельцем.
+
+## 2026-10-11 — S10 Phase 3, Batch 1
+- ST-3..ST-15: 13 экранов реализованы параллельно (fixer ?13), +2735 строк суммарно; каждый владеет одной директорией frontend/app/(candidate)/<screen>/.
+- ST-6: upload через rest.body (не multipart), PDF download через plain fetch + Bearer; ST-12: гейт карточки client-side; ST-14: локальный unknown-guard контактов.
+- Верификация: tsc --noEmit exit 0 (транзитная ошибка ST-3 в ходе параллельной записи устранена).
+- Открыто: oracle-верификация Batch 1.
+
+## 2026-10-11 — S10 Batch 1 верификация + фиксы
+- Oracle: FIX REQUIRED — 2 major (consent type не совпадал с enum бэкенда; upload не multipart), 3 minor (dead-link контактов, ?/SE в UI, baseline-спека candidate.json).
+- Fixer: consent types выровнены с ConsentType.java; upload > FormData multipart, лимит 5 МБ; link > ?invitation=; ?/SE убраны; candidate.json multipart + регенерация; gateway client_max_body_size 6m.
+- tsc exit 0, generate:clients идемпотентен.
+
+## 2026-10-11 — S10 Batch 1 реверификация
+- Oracle: APPROVE Batch 1 — 6/6 фиксов подтверждены, tsc exit 0.
+- Неблокирующее: tsconfig.tsbuildinfo добавить в .gitignore перед коммитом.
+
+## 2026-10-11 — S10 Phase 3, Batch 2 (ST-16)
+- Сделано: nav.ts/shell.tsx wired — реальные маршруты, badge уведомлений (дублированный hook внутри shell), RoutePlaceholder удалён.
+- Smoke по user_flow §2 через gateway: register/verify/login/consents/profile/survey/grade/session/answers/history/notifications = 200/201; карточка скрыта до category_assigned; invitations пусты (seed — S12).
+- tsc exit 0. Открыто: финальная oracle-верификация.
+
+## 2026-10-11 — S10 Phase 4 финальная верификация + фиксы
+- Oracle: FIX REQUIRED — 1 major (разорвана цепочка session_id survey>grade>test), 2 minor (нет входа на /profile/upload; tailwind content без components/), 1 hygiene (tsconfig.tsbuildinfo не игнорируется).
+- Fixer: survey persist session_id > grade read/auto-display/write > /test?sessionId= > test fallback localStorage; ссылка на /profile/upload на profile; tailwind content + components; frontend/.gitignore (*.tsbuildinfo).
+- tsc exit 0. Открыто: реверификация ora-7.
+
+## 2026-10-11 — S10 Phase 4 реверификация
+- Oracle: APPROVE S10 for user acceptance review — 4/4 фикса подтверждены (цепочка session_id закрыта на каждом шаге, tsc exit 0, tsbuildinfo игнорируется).
+- Осталось: браузерный acceptance-проход (клик-сквозь, тайминг событий category_assigned/contact_released).

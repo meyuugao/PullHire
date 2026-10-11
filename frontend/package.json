@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:clients": "openapi-typescript ../docs/examples/openapi/auth.json -o lib/api/generated/auth/schema.d.ts && openapi-typescript ../docs/examples/openapi/candidate.json -o lib/api/generated/candidate/schema.d.ts && openapi-typescript ../docs/examples/openapi/fsp.json -o lib/api/generated/fsp/schema.d.ts && openapi-typescript ../docs/examples/openapi/assessment.json -o lib/api/generated/assessment/schema.d.ts && openapi-typescript ../docs/examples/openapi/outreach.json -o lib/api/generated/outreach/schema.d.ts && openapi-typescript ../docs/examples/openapi/notification.json -o lib/api/generated/notification/schema.d.ts"
   },
   "dependencies": {
     "next": "^15.0.0",
@@ -20,6 +21,7 @@
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "openapi-typescript": "^7.13.0"
   }
 }
